@@ -6,16 +6,16 @@
  */
 #pragma once
 
-#define HAL_BOARD_SITL     3
-#define HAL_BOARD_SMACCM   4  // unused
-#define HAL_BOARD_PX4      5  // unused
-#define HAL_BOARD_LINUX    7
-#define HAL_BOARD_VRBRAIN  8
-#define HAL_BOARD_CHIBIOS  10
-#define HAL_BOARD_F4LIGHT  11 // reserved
-#define HAL_BOARD_ESP32	   12
-#define HAL_BOARD_QURT     13
-#define HAL_BOARD_EMPTY    99
+#define HAL_BOARD_SITL    3
+#define HAL_BOARD_SMACCM  4  // unused
+#define HAL_BOARD_PX4     5  // unused
+#define HAL_BOARD_LINUX   7
+#define HAL_BOARD_VRBRAIN 8
+#define HAL_BOARD_CHIBIOS 10
+#define HAL_BOARD_F4LIGHT 11  // reserved
+#define HAL_BOARD_ESP32   12
+#define HAL_BOARD_QURT    13
+#define HAL_BOARD_EMPTY   99
 
 /* Default board subtype is -1 */
 #define HAL_BOARD_SUBTYPE_NONE -1
@@ -44,6 +44,7 @@
 #define HAL_BOARD_SUBTYPE_LINUX_VNAV       1024
 #define HAL_BOARD_SUBTYPE_LINUX_OBAL_V1    1025
 #define HAL_BOARD_SUBTYPE_LINUX_CANZERO    1026
+#define HAL_BOARD_SUBTYPE_LINUX_SHARKY     1027  // Sharky Board Added
 
 /* HAL CHIBIOS sub-types, starting at 5000
 
@@ -51,42 +52,41 @@
    boards do not need a subtype defined. It is only needed if we need
    to use #ifdef'd code to change behaviour
 */
-#define HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412	5000
+#define HAL_BOARD_SUBTYPE_CHIBIOS_SKYVIPER_F412 5000
 #define HAL_BOARD_SUBTYPE_CHIBIOS_FMUV3         5001
 // #define HAL_BOARD_SUBTYPE_CHIBIOS_FMUV4         5002
-#define HAL_BOARD_SUBTYPE_CHIBIOS_GENERIC       5009
-#define HAL_BOARD_SUBTYPE_CHIBIOS_FMUV5         5013
+#define HAL_BOARD_SUBTYPE_CHIBIOS_GENERIC 5009
+#define HAL_BOARD_SUBTYPE_CHIBIOS_FMUV5   5013
 // #define HAL_BOARD_SUBTYPE_CHIBIOS_VRBRAIN_V51   5016
 // #define HAL_BOARD_SUBTYPE_CHIBIOS_VRBRAIN_V52   5017
 // #define HAL_BOARD_SUBTYPE_CHIBIOS_VRUBRAIN_V51  5018
 // #define HAL_BOARD_SUBTYPE_CHIBIOS_VRCORE_V10    5019
 // #define HAL_BOARD_SUBTYPE_CHIBIOS_VRBRAIN_V54   5020
 
-#define HAL_BOARD_SUBTYPE_ESP32_DIY             6001
-#define HAL_BOARD_SUBTYPE_ESP32_ICARUS          6002
-#define HAL_BOARD_SUBTYPE_ESP32_BUZZ            6003
-#define HAL_BOARD_SUBTYPE_ESP32_EMPTY           6004
-#define HAL_BOARD_SUBTYPE_ESP32_TOMTE76         6005
-#define HAL_BOARD_SUBTYPE_ESP32_NICK            6006
-#define HAL_BOARD_SUBTYPE_ESP32_S3DEVKIT        6007
-#define HAL_BOARD_SUBTYPE_ESP32_S3EMPTY         6008
+#define HAL_BOARD_SUBTYPE_ESP32_DIY      6001
+#define HAL_BOARD_SUBTYPE_ESP32_ICARUS   6002
+#define HAL_BOARD_SUBTYPE_ESP32_BUZZ     6003
+#define HAL_BOARD_SUBTYPE_ESP32_EMPTY    6004
+#define HAL_BOARD_SUBTYPE_ESP32_TOMTE76  6005
+#define HAL_BOARD_SUBTYPE_ESP32_NICK     6006
+#define HAL_BOARD_SUBTYPE_ESP32_S3DEVKIT 6007
+#define HAL_BOARD_SUBTYPE_ESP32_S3EMPTY  6008
 
 /* InertialSensor driver types */
-#define HAL_INS_NONE         0
-#define HAL_INS_MPU60XX_SPI  2
-#define HAL_INS_MPU60XX_I2C  3
-#define HAL_INS_HIL_UNUSED   4  // unused
-#define HAL_INS_VRBRAIN      8
-#define HAL_INS_MPU9250_SPI  9
+#define HAL_INS_NONE        0
+#define HAL_INS_MPU60XX_SPI 2
+#define HAL_INS_MPU60XX_I2C 3
+#define HAL_INS_HIL_UNUSED  4  // unused
+#define HAL_INS_VRBRAIN     8
+#define HAL_INS_MPU9250_SPI 9
 #define HAL_INS_MPU9250_I2C 13
 #define HAL_INS_MPU6500     19
 #define HAL_INS_INV2_I2C    24
 #define HAL_INS_INV2_SPI    25
 
-
 /* Barometer driver types */
-#define HAL_BARO_NONE        0
-#define HAL_BARO_HIL_UNUSED  6  // unused
+#define HAL_BARO_NONE           0
+#define HAL_BARO_HIL_UNUSED     6  // unused
 #define HAL_BARO_20789_I2C_I2C  14
 #define HAL_BARO_20789_I2C_SPI  15
 #define HAL_BARO_LPS25H_IMU_I2C 17
@@ -100,12 +100,11 @@
 /* 150Mhz: STM32F4 or similar. Assumes:
  *  - hardware floating point
  *  - tens of kilobytes of memory available
-*/
-#define HAL_CPU_CLASS_150  3
+ */
+#define HAL_CPU_CLASS_150 3
 
 /* GigaHz class: SITL, BeagleBone etc. Assumes megabytes of memory available. */
 #define HAL_CPU_CLASS_1000 4
-
 
 /*
   memory classes, in kbytes. Board must have at least the given amount
@@ -129,19 +128,19 @@
 /* DEFINITIONS FOR BOARDS */
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-    #include <AP_HAL/board/sitl.h>
+#include <AP_HAL/board/sitl.h>
 #elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
-    #include <AP_HAL/board/linux.h>
+#include <AP_HAL/board/linux.h>
 #elif CONFIG_HAL_BOARD == HAL_BOARD_EMPTY
-    #include <AP_HAL/board/empty.h>
+#include <AP_HAL/board/empty.h>
 #elif CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
-    #include <AP_HAL/board/vrbrain.h>
+#include <AP_HAL/board/vrbrain.h>
 #elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-	#include <AP_HAL/board/chibios.h>
+#include <AP_HAL/board/chibios.h>
 #elif CONFIG_HAL_BOARD == HAL_BOARD_ESP32
-    #include <AP_HAL/board/esp32.h>
+#include <AP_HAL/board/esp32.h>
 #elif CONFIG_HAL_BOARD == HAL_BOARD_QURT
-    #include <AP_HAL/board/qurt.h>
+#include <AP_HAL/board/qurt.h>
 #else
 #error "Unknown CONFIG_HAL_BOARD type"
 #endif
@@ -179,14 +178,15 @@
 #endif
 
 #ifndef HAL_REQUIRES_BDSHOT_SUPPORT
-#define HAL_REQUIRES_BDSHOT_SUPPORT (defined(HAL_WITH_BIDIR_DSHOT) || HAL_WITH_IO_MCU_BIDIR_DSHOT)
+#define HAL_REQUIRES_BDSHOT_SUPPORT \
+    (defined(HAL_WITH_BIDIR_DSHOT) || HAL_WITH_IO_MCU_BIDIR_DSHOT)
 #endif
 
-// support for Extended DShot Telemetry v2 is enabled only if any kind of such telemetry
-// can in principle arrive, either from servo outputs or from IOMCU
+// support for Extended DShot Telemetry v2 is enabled only if any kind of such
+// telemetry can in principle arrive, either from servo outputs or from IOMCU
 
-// if not desired, set to 0 - and if IOMCU has bidirectional DShot enabled, recompile it too,
-// otherwise the communication to IOMCU breaks!
+// if not desired, set to 0 - and if IOMCU has bidirectional DShot enabled,
+// recompile it too, otherwise the communication to IOMCU breaks!
 #ifndef AP_EXTENDED_DSHOT_TELEM_V2_ENABLED
 #define AP_EXTENDED_DSHOT_TELEM_V2_ENABLED HAL_REQUIRES_BDSHOT_SUPPORT
 #endif
@@ -225,7 +225,7 @@
 #endif
 
 #ifndef HAL_MAX_CAN_PROTOCOL_DRIVERS
-    #define HAL_MAX_CAN_PROTOCOL_DRIVERS HAL_NUM_CAN_IFACES
+#define HAL_MAX_CAN_PROTOCOL_DRIVERS HAL_NUM_CAN_IFACES
 #endif
 
 #ifndef HAL_CANMANAGER_ENABLED
@@ -315,12 +315,13 @@
 #endif
 
 #ifndef HAL_HNF_MAX_FILTERS
-// On an F7 The difference in CPU load between 1 notch and 24 notches is about 2%
-// The difference in CPU load between 1Khz backend and 2Khz backend is about 10%
-// So at 1Khz almost all notch combinations can be supported on F7 and certainly H7
+// On an F7 The difference in CPU load between 1 notch and 24 notches is about
+// 2% The difference in CPU load between 1Khz backend and 2Khz backend is about
+// 10% So at 1Khz almost all notch combinations can be supported on F7 and
+// certainly H7
 #if defined(STM32H7) || CONFIG_HAL_BOARD == HAL_BOARD_SITL
-// Enough for a double-notch per motor on an octa using three IMUs and one harmonics
-// plus one static notch with one double-notch harmonics
+// Enough for a double-notch per motor on an octa using three IMUs and one
+// harmonics plus one static notch with one double-notch harmonics
 #define HAL_HNF_MAX_FILTERS 54
 #elif defined(STM32F7)
 // Enough for a notch per motor on an octa using three IMUs and one harmonics
@@ -332,9 +333,10 @@
 // Or triple-notch per motor on one IMU with one harmonic
 #define HAL_HNF_MAX_FILTERS 24
 #endif
-#endif // HAL_HNF_MAX_FILTERS
+#endif  // HAL_HNF_MAX_FILTERS
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL // allow SITL to have all the CANFD options
+#if CONFIG_HAL_BOARD == \
+    HAL_BOARD_SITL  // allow SITL to have all the CANFD options
 #define HAL_CANFD_SUPPORTED 8
 #elif !defined(HAL_CANFD_SUPPORTED)
 #define HAL_CANFD_SUPPORTED 0
@@ -363,7 +365,6 @@
 #ifndef HAL_ENABLE_DFU_BOOT
 #define HAL_ENABLE_DFU_BOOT 0
 #endif
-
 
 #ifndef HAL_ENABLE_SENDING_STATS
 #define HAL_ENABLE_SENDING_STATS BOARD_FLASH_SIZE >= 256

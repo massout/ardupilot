@@ -10,12 +10,16 @@ import waflib
 from waflib import Utils
 from waflib.Configure import conf
 import json
+
 _board_classes = {}
 _board = None
 
 # modify our search path:
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../libraries/AP_HAL_ChibiOS/hwdef/scripts'))
+sys.path.append(
+    os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../libraries/AP_HAL_ChibiOS/hwdef/scripts')
+)
 import chibios_hwdef
+
 
 class BoardMeta(type):
     def __init__(cls, name, bases, dct):
@@ -34,6 +38,7 @@ class BoardMeta(type):
             raise Exception('board named %s already exists' % board_name)
         _board_classes[board_name] = cls
 
+
 class Board:
     abstract = True
 
@@ -43,7 +48,7 @@ class Board:
     def configure(self, cfg):
         cfg.env.TOOLCHAIN = cfg.options.toolchain or self.toolchain
         cfg.env.ROMFS_FILES = []
-        if hasattr(self,'configure_toolchain'):
+        if hasattr(self, 'configure_toolchain'):
             self.configure_toolchain(cfg)
         else:
             cfg.load('toolchain')
@@ -53,14 +58,16 @@ class Board:
         cfg.env.CHECK_SYMBOLS = False
 
         env = waflib.ConfigSet.ConfigSet()
+
         def srcpath(path):
             return cfg.srcnode.make_node(path).abspath()
+
         env.SRCROOT = srcpath('')
         self.configure_env(cfg, env)
 
         # Setup scripting:
         env.DEFINES.update(
-            LUA_32BITS = 1,
+            LUA_32BITS=1,
         )
 
         env.AP_LIBRARIES += [
@@ -70,11 +77,11 @@ class Board:
 
         if cfg.options.enable_scripting:
             env.DEFINES.update(
-                AP_SCRIPTING_ENABLED = 1,
+                AP_SCRIPTING_ENABLED=1,
             )
         elif cfg.options.disable_scripting:
             env.DEFINES.update(
-                AP_SCRIPTING_ENABLED = 0,
+                AP_SCRIPTING_ENABLED=0,
             )
 
         # allow GCS disable for AP_DAL example
@@ -85,29 +92,26 @@ class Board:
         if cfg.options.enable_dds:
             cfg.recurse('libraries/AP_DDS')
             env.ENABLE_DDS = True
-            env.AP_LIBRARIES += [
-                'AP_DDS'
-            ]
-            env.DEFINES.update(AP_DDS_ENABLED = 1)
+            env.AP_LIBRARIES += ['AP_DDS']
+            env.DEFINES.update(AP_DDS_ENABLED=1)
             # check for microxrceddsgen
-            cfg.find_program('microxrceddsgen',mandatory=True)
+            cfg.find_program('microxrceddsgen', mandatory=True)
         else:
             env.ENABLE_DDS = False
-            env.DEFINES.update(AP_DDS_ENABLED = 0)
+            env.DEFINES.update(AP_DDS_ENABLED=0)
 
         # setup for supporting onvif cam control
         if cfg.options.enable_onvif:
             cfg.recurse('libraries/AP_ONVIF')
             env.ENABLE_ONVIF = True
-            env.ROMFS_FILES += [('scripts/ONVIF_Camera_Control.lua',
-                                'libraries/AP_Scripting/applets/ONVIF_Camera_Control.lua')]
+            env.ROMFS_FILES += [
+                ('scripts/ONVIF_Camera_Control.lua', 'libraries/AP_Scripting/applets/ONVIF_Camera_Control.lua')
+            ]
             env.DEFINES.update(
                 ENABLE_ONVIF=1,
                 SCRIPTING_ENABLE_DEFAULT=1,
             )
-            env.AP_LIBRARIES += [
-                'AP_ONVIF'
-            ]
+            env.AP_LIBRARIES += ['AP_ONVIF']
         else:
             env.ENABLE_ONVIF = False
             env.DEFINES.update(
@@ -149,9 +153,7 @@ class Board:
             env.DEFINES.update(
                 AP_CUSTOMCONTROL_ENABLED=1,
             )
-            env.AP_LIBRARIES += [
-                'AC_CustomControl'
-            ]
+            env.AP_LIBRARIES += ['AC_CustomControl']
             cfg.msg("Enabled custom controller", 'yes')
         else:
             env.DEFINES.update(
@@ -167,7 +169,7 @@ class Board:
 
         if cfg.options.enable_networking_tests:
             env.CXXFLAGS += ['-DAP_NETWORKING_TESTS_ENABLED=1']
-            
+
         d = env.get_merged_dict()
         # Always prepend so that arguments passed in the command line get
         # the priority.
@@ -187,15 +189,18 @@ class Board:
 
         cfg.ap_common_checks()
 
-        cfg.env.prepend_value('INCLUDES', [
-            cfg.srcnode.find_dir('libraries/AP_Common/missing').abspath()
-        ])
-        if os.path.exists(os.path.join(env.SRCROOT, '.vscode/c_cpp_properties.json')) and 'AP_NO_COMPILE_COMMANDS' not in os.environ:
+        cfg.env.prepend_value('INCLUDES', [cfg.srcnode.find_dir('libraries/AP_Common/missing').abspath()])
+        if (
+            os.path.exists(os.path.join(env.SRCROOT, '.vscode/c_cpp_properties.json'))
+            and 'AP_NO_COMPILE_COMMANDS' not in os.environ
+        ):
             # change c_cpp_properties.json configure the VSCode Intellisense env
             c_cpp_properties = json.load(open(os.path.join(env.SRCROOT, '.vscode/c_cpp_properties.json')))
             for config in c_cpp_properties['configurations']:
                 config['compileCommands'] = "${workspaceFolder}/build/%s/compile_commands.json" % self.get_name()
-            json.dump(c_cpp_properties, open(os.path.join(env.SRCROOT, './.vscode/c_cpp_properties.json'), 'w'), indent=4)
+            json.dump(
+                c_cpp_properties, open(os.path.join(env.SRCROOT, './.vscode/c_cpp_properties.json'), 'w'), indent=4
+            )
             cfg.msg("Configured VSCode Intellisense", 'yes')
         else:
             cfg.msg("Configured VSCode Intellisense:", 'no', color='YELLOW')
@@ -204,8 +209,7 @@ class Board:
         if cfg.env.TOOLCHAIN == "custom":
             return True
         (major, minor, patchlevel) = cfg.env.CC_VERSION
-        return (int(major) > want_major or
-                (int(major) == want_major and int(minor) >= want_minor))
+        return int(major) > want_major or (int(major) == want_major and int(minor) >= want_minor)
 
     def configure_env(self, cfg, env):
         # Use a dictionary instead of the conventional list for definitions to
@@ -216,8 +220,8 @@ class Board:
 
         # potentially set extra defines from an environment variable:
         if cfg.options.define is not None:
-            for (n, v) in [d.split("=") for d in cfg.options.define]:
-                cfg.msg("Defining: %s" % (n, ), v)
+            for n, v in [d.split("=") for d in cfg.options.define]:
+                cfg.msg("Defining: %s" % (n,), v)
                 env.CFLAGS += ['-D%s=%s' % (n, v)]
                 env.CXXFLAGS += ['-D%s=%s' % (n, v)]
 
@@ -225,7 +229,6 @@ class Board:
             '-ffunction-sections',
             '-fdata-sections',
             '-fsigned-char',
-
             '-Wall',
             '-Wextra',
             '-Werror=format',
@@ -252,18 +255,18 @@ class Board:
 
         if cfg.options.scripting_checks:
             env.DEFINES.update(
-                AP_SCRIPTING_CHECKS = 1,
-                )
+                AP_SCRIPTING_CHECKS=1,
+            )
 
-        cfg.msg("CXX Compiler", "%s %s"  % (cfg.env.COMPILER_CXX, ".".join(cfg.env.CC_VERSION)))
+        cfg.msg("CXX Compiler", "%s %s" % (cfg.env.COMPILER_CXX, ".".join(cfg.env.CC_VERSION)))
 
         if cfg.options.assert_cc_version:
-            cfg.msg("Checking compiler", "%s %s"  % (cfg.options.assert_cc_version, ".".join(cfg.env.CC_VERSION)))
-            have_version = cfg.env.COMPILER_CXX+"-"+'.'.join(list(cfg.env.CC_VERSION))
+            cfg.msg("Checking compiler", "%s %s" % (cfg.options.assert_cc_version, ".".join(cfg.env.CC_VERSION)))
+            have_version = cfg.env.COMPILER_CXX + "-" + '.'.join(list(cfg.env.CC_VERSION))
             want_version = cfg.options.assert_cc_version
             if have_version != want_version:
                 cfg.fatal("cc version mismatch: %s should be %s" % (have_version, want_version))
-        
+
         if 'clang' in cfg.env.COMPILER_CC:
             env.CFLAGS += [
                 '-fcolor-diagnostics',
@@ -280,7 +283,7 @@ class Board:
         else:
             env.CFLAGS += [
                 '-Wno-format-contains-nul',
-                '-fsingle-precision-constant', # force const vals to be float , not double. so 100.0 means 100.0f
+                '-fsingle-precision-constant',  # force const vals to be float , not double. so 100.0 means 100.0f
             ]
             if self.cc_version_gte(cfg, 7, 4):
                 env.CXXFLAGS += [
@@ -297,7 +300,7 @@ class Board:
                 '-O0',
             ]
             env.DEFINES.update(
-                HAL_DEBUG_BUILD = 1,
+                HAL_DEBUG_BUILD=1,
             )
         elif cfg.options.debug_symbols:
             env.CFLAGS += [
@@ -317,7 +320,7 @@ class Board:
                 '-coverage',
             ]
             env.DEFINES.update(
-                HAL_COVERAGE_BUILD = 1,
+                HAL_COVERAGE_BUILD=1,
             )
 
         if cfg.options.bootloader:
@@ -325,11 +328,11 @@ class Board:
             cfg.options.disable_scripting = True
             if cfg.options.signed_fw:
                 env.DEFINES.update(
-                    ENABLE_HEAP = 1,
+                    ENABLE_HEAP=1,
                 )
         else:
             env.DEFINES.update(
-                ENABLE_HEAP = 1,
+                ENABLE_HEAP=1,
             )
 
         if cfg.options.enable_math_check_indexes:
@@ -337,15 +340,13 @@ class Board:
 
         if cfg.options.private_key:
             env.PRIVATE_KEY = cfg.options.private_key
-            
+
         env.CXXFLAGS += [
             '-std=gnu++11',
-
             '-fdata-sections',
             '-ffunction-sections',
             '-fno-exceptions',
             '-fsigned-char',
-
             '-Wall',
             '-Wextra',
             '-Wpointer-arith',
@@ -386,12 +387,9 @@ class Board:
         if 'clang++' in cfg.env.COMPILER_CXX:
             env.CXXFLAGS += [
                 '-fcolor-diagnostics',
-
                 '-Werror=address-of-packed-member',
-
                 '-Werror=inconsistent-missing-override',
                 '-Werror=overloaded-virtual',
-
                 # catch conversion issues:
                 '-Werror=bitfield-enum-conversion',
                 '-Werror=bool-conversion',
@@ -402,20 +400,16 @@ class Board:
                 '-Werror=non-literal-null-conversion',
                 '-Werror=null-conversion',
                 '-Werror=objc-literal-conversion',
-#                '-Werror=shorten-64-to-32',  # ARRAY_SIZE() creates this all over the place as the caller typically takes a uint32_t not a size_t
+                #                '-Werror=shorten-64-to-32',  # ARRAY_SIZE() creates this all over the place as the caller typically takes a uint32_t not a size_t
                 '-Werror=string-conversion',
                 #    '-Werror=sign-conversion', # can't use as we assign into AP_Int8 from uint8_ts
-
                 '-Wno-gnu-designator',
                 '-Wno-mismatched-tags',
                 '-Wno-gnu-variable-sized-type-not-at-end',
                 '-Werror=implicit-fallthrough',
             ]
         else:
-            env.CXXFLAGS += [
-                '-Wno-format-contains-nul',
-                '-Werror=unused-but-set-variable'
-            ]
+            env.CXXFLAGS += ['-Wno-format-contains-nul', '-Werror=unused-but-set-variable']
             if self.cc_version_gte(cfg, 5, 2):
                 env.CXXFLAGS += [
                     '-Werror=suggest-override',
@@ -432,11 +426,12 @@ class Board:
                 ]
 
         if cfg.options.Werror:
-            errors = ['-Werror',
-                      '-Werror=missing-declarations',
-                      '-Werror=float-equal',
-                      '-Werror=undef',
-                    ]
+            errors = [
+                '-Werror',
+                '-Werror=missing-declarations',
+                '-Werror=float-equal',
+                '-Werror=undef',
+            ]
             env.CFLAGS += errors
             env.CXXFLAGS += errors
 
@@ -463,23 +458,17 @@ class Board:
 
         if self.with_can:
             # for both AP_Perip and main fw enable deadlines
-            env.DEFINES.update(CANARD_ENABLE_DEADLINE = 1)
+            env.DEFINES.update(CANARD_ENABLE_DEADLINE=1)
 
             if not cfg.env.AP_PERIPH:
                 env.AP_LIBRARIES += [
                     'AP_DroneCAN',
                     'modules/DroneCAN/libcanard/*.c',
-                    ]
+                ]
                 if cfg.options.enable_dronecan_tests:
-                    env.DEFINES.update(AP_TEST_DRONECAN_DRIVERS = 1)
+                    env.DEFINES.update(AP_TEST_DRONECAN_DRIVERS=1)
 
-                env.DEFINES.update(
-                    DRONECAN_CXX_WRAPPERS = 1,
-                    USE_USER_HELPERS = 1,
-                    CANARD_ALLOCATE_SEM=1
-                )
-
-
+                env.DEFINES.update(DRONECAN_CXX_WRAPPERS=1, USE_USER_HELPERS=1, CANARD_ALLOCATE_SEM=1)
 
         if cfg.options.build_dates:
             env.build_dates = True
@@ -495,14 +484,14 @@ class Board:
 
         if cfg.options.postype_single:
             env.CXXFLAGS += ['-DHAL_WITH_POSTYPE_DOUBLE=0']
-            
+
         if cfg.options.osd or cfg.options.osd_fonts:
             env.CXXFLAGS += ['-DOSD_ENABLED=1', '-DHAL_MSP_ENABLED=1']
 
         if cfg.options.osd_fonts:
             for f in os.listdir('libraries/AP_OSD/fonts'):
                 if fnmatch.fnmatch(f, "font*bin"):
-                    env.ROMFS_FILES += [(f,'libraries/AP_OSD/fonts/'+f)]
+                    env.ROMFS_FILES += [(f, 'libraries/AP_OSD/fonts/' + f)]
 
         if cfg.options.ekf_double:
             env.CXXFLAGS += ['-DHAL_WITH_EKF_DOUBLE=1']
@@ -525,13 +514,13 @@ class Board:
         if os.path.exists(custom_dir):
             for root, subdirs, files in os.walk(custom_dir):
                 for f in files:
-                    if fnmatch.fnmatch(f,"*~"):
+                    if fnmatch.fnmatch(f, "*~"):
                         # exclude emacs tmp files
                         continue
-                    fname = root[len(custom_dir)+1:]+"/"+f
+                    fname = root[len(custom_dir) + 1 :] + "/" + f
                     if fname.startswith("/"):
                         fname = fname[1:]
-                    env.ROMFS_FILES += [(fname,root+"/"+f)]
+                    env.ROMFS_FILES += [(fname, root + "/" + f)]
 
     def pre_build(self, bld):
         '''pre-build hook that gets called before dynamic sources'''
@@ -543,6 +532,7 @@ class Board:
         bld.ap_version_append_int('GIT_VERSION_INT', int("0x" + bld.git_head_hash(short=True), base=16))
         bld.ap_version_append_str('AP_BUILD_ROOT', bld.srcnode.abspath())
         import time
+
         ltime = time.localtime()
         if bld.env.build_dates:
             bld.ap_version_append_int('BUILD_DATE_YEAR', ltime.tm_year)
@@ -552,6 +542,7 @@ class Board:
     def embed_ROMFS_files(self, ctx):
         '''embed some files using AP_ROMFS'''
         import embed
+
         header = ctx.bldnode.make_node('ap_romfs_embedded.h').abspath()
         if not embed.create_embedded_h(header, ctx.env.ROMFS_FILES, ctx.env.ROMFS_UNCOMPRESSED):
             ctx.fatal("Failed to created ap_romfs_embedded.h")
@@ -564,7 +555,9 @@ class Board:
                 ctx.env.CXXFLAGS += ['-DHAL_HAVE_AP_ROMFS_EMBEDDED_LUA']
                 break
 
+
 Board = BoardMeta('Board', Board.__bases__, dict(Board.__dict__))
+
 
 def add_dynamic_boards_chibios():
     '''add boards based on existance of hwdef.dat in subdirectories for ChibiOS'''
@@ -576,6 +569,7 @@ def add_dynamic_boards_chibios():
         if os.path.exists(hwdef):
             newclass = type(d, (chibios,), {'name': d})
 
+
 @conf
 def get_chibios_board_cls(ctx, name, hwdef):
     if name in _board_classes.keys():
@@ -584,6 +578,7 @@ def get_chibios_board_cls(ctx, name, hwdef):
     newclass = type(name, (chibios,), {'name': name})
     newclass.hwdef = hwdef
     return newclass
+
 
 def add_dynamic_boards_esp32():
     '''add boards based on existance of hwdef.dat in subdirectories for ESP32'''
@@ -599,14 +594,17 @@ def add_dynamic_boards_esp32():
             else:
                 newclass = type(d, (esp32,), {'name': d})
 
+
 def get_boards_names():
     add_dynamic_boards_chibios()
     add_dynamic_boards_esp32()
 
     return sorted(list(_board_classes.keys()), key=str.lower)
 
+
 def is_board_based(board, cls):
     return issubclass(_board_classes[board], cls)
+
 
 def get_ap_periph_boards():
     '''Add AP_Periph boards based on existance of periph keywork in hwdef.dat or board name'''
@@ -628,9 +626,11 @@ def get_ap_periph_boards():
     list_ap = list(set(list_ap))
     return list_ap
 
+
 def get_removed_boards():
     '''list of boards which have been removed'''
     return sorted(['px4-v1', 'px4-v2', 'px4-v3', 'px4-v4', 'px4-v4pro'])
+
 
 @conf
 def get_board(ctx):
@@ -639,7 +639,8 @@ def get_board(ctx):
         if not ctx.env.BOARD:
             ctx.fatal('BOARD environment variable must be set before first call to get_board()')
         if ctx.env.BOARD in get_removed_boards():
-            ctx.fatal('''
+            ctx.fatal(
+                '''
 The board target %s has been removed from ArduPilot with the removal of NuttX support and HAL_PX4.
 
 Please use a replacement build as follows:
@@ -648,7 +649,9 @@ Please use a replacement build as follows:
  px4-v3     Use Pixhawk1 or CubeBlack builds
  px4-v4     Use Pixracer build
  px4-v4pro  Use DrotekP3Pro build
-''' % ctx.env.BOARD)
+'''
+                % ctx.env.BOARD
+            )
 
         boards = _board_classes.keys()
         if ctx.env.BOARD not in boards:
@@ -656,9 +659,11 @@ Please use a replacement build as follows:
         _board = _board_classes[ctx.env.BOARD]()
     return _board
 
+
 # NOTE: Keeping all the board definitions together so we can easily
 # identify opportunities to simplify common flags. In the future might
 # be worthy to keep board definitions in files of their own.
+
 
 class sitl(Board):
 
@@ -668,10 +673,10 @@ class sitl(Board):
     def configure_env(self, cfg, env):
         super(sitl, self).configure_env(cfg, env)
         env.DEFINES.update(
-            CONFIG_HAL_BOARD = 'HAL_BOARD_SITL',
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_NONE',
-            AP_SCRIPTING_CHECKS = 1, # SITL should always do runtime scripting checks
-            AP_BARO_PROBE_EXTERNAL_I2C_BUSES = 1,
+            CONFIG_HAL_BOARD='HAL_BOARD_SITL',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_NONE',
+            AP_SCRIPTING_CHECKS=1,  # SITL should always do runtime scripting checks
+            AP_BARO_PROBE_EXTERNAL_I2C_BUSES=1,
         )
 
         env.BOARD_CLASS = "SITL"
@@ -693,14 +698,13 @@ class sitl(Board):
 
         if self.with_can:
             cfg.define('HAL_NUM_CAN_IFACES', 2)
-            env.DEFINES.update(CANARD_MULTI_IFACE=1,
-                               CANARD_IFACE_ALL = 0x3,
-                               CANARD_ENABLE_CANFD = 1,
-                               CANARD_ENABLE_ASSERTS = 1)
+            env.DEFINES.update(
+                CANARD_MULTI_IFACE=1, CANARD_IFACE_ALL=0x3, CANARD_ENABLE_CANFD=1, CANARD_ENABLE_ASSERTS=1
+            )
             if not cfg.options.force_32bit:
                 # needed for cygwin
-                env.CXXFLAGS += [ '-DCANARD_64_BIT=1' ]
-                env.CFLAGS += [ '-DCANARD_64_BIT=1' ]
+                env.CXXFLAGS += ['-DCANARD_64_BIT=1']
+                env.CFLAGS += ['-DCANARD_64_BIT=1']
             if Utils.unversioned_sys_platform().startswith("linux"):
                 cfg.define('HAL_CAN_WITH_SOCKETCAN', 1)
             else:
@@ -714,7 +718,7 @@ class sitl(Board):
         if not cfg.options.disable_networking and not 'clang' in cfg.env.COMPILER_CC:
             # lwip doesn't build with clang
             env.CXXFLAGS += ['-DAP_NETWORKING_ENABLED=1']
-        
+
         if cfg.options.ubsan or cfg.options.ubsan_abort:
             env.CXXFLAGS += [
                 "-fsanitize=undefined",
@@ -727,9 +731,7 @@ class sitl(Board):
             ]
 
         if cfg.options.ubsan_abort:
-            env.CXXFLAGS += [
-                "-fno-sanitize-recover"
-            ]
+            env.CXXFLAGS += ["-fno-sanitize-recover"]
 
         if not cfg.env.DEBUG:
             env.CXXFLAGS += [
@@ -749,10 +751,12 @@ class sitl(Board):
         cfg.check_librt(env)
         cfg.check_feenableexcept()
 
-        env.LINKFLAGS += ['-pthread',]
+        env.LINKFLAGS += [
+            '-pthread',
+        ]
 
         if cfg.env.DEBUG and 'clang++' in cfg.env.COMPILER_CXX and cfg.options.asan:
-             env.LINKFLAGS += ['-fsanitize=address']
+            env.LINKFLAGS += ['-fsanitize=address']
 
         env.AP_LIBRARIES += [
             'AP_HAL_SITL',
@@ -769,7 +773,7 @@ class sitl(Board):
             env.LINKFLAGS += ['-Wl,--wrap,_malloc_r']
         elif platform.system() != 'Darwin':
             env.LINKFLAGS += ['-Wl,--wrap,malloc']
-        
+
         if cfg.options.enable_sfml:
             if not cfg.check_SFML(env):
                 cfg.fatal("Failed to find SFML libraries")
@@ -780,23 +784,23 @@ class sitl(Board):
             env.CXXFLAGS += ['-DSFML_JOYSTICK']
 
         if cfg.options.sitl_osd:
-            env.CXXFLAGS += ['-DWITH_SITL_OSD','-DOSD_ENABLED=1']
+            env.CXXFLAGS += ['-DWITH_SITL_OSD', '-DOSD_ENABLED=1']
             for f in os.listdir('libraries/AP_OSD/fonts'):
                 if fnmatch.fnmatch(f, "font*bin"):
-                    env.ROMFS_FILES += [(f,'libraries/AP_OSD/fonts/'+f)]
+                    env.ROMFS_FILES += [(f, 'libraries/AP_OSD/fonts/' + f)]
 
         for f in os.listdir('Tools/autotest/models'):
             if fnmatch.fnmatch(f, "*.json") or fnmatch.fnmatch(f, "*.parm"):
-                env.ROMFS_FILES += [('models/'+f,'Tools/autotest/models/'+f)]
+                env.ROMFS_FILES += [('models/' + f, 'Tools/autotest/models/' + f)]
 
         # include locations.txt so SITL on windows can lookup by name
-        env.ROMFS_FILES += [('locations.txt','Tools/autotest/locations.txt')]
+        env.ROMFS_FILES += [('locations.txt', 'Tools/autotest/locations.txt')]
 
         # embed any scripts from ROMFS/scripts
         if os.path.exists('ROMFS/scripts'):
             for f in os.listdir('ROMFS/scripts'):
                 if fnmatch.fnmatch(f, "*.lua"):
-                    env.ROMFS_FILES += [('scripts/'+f,'ROMFS/scripts/'+f)]
+                    env.ROMFS_FILES += [('scripts/' + f, 'ROMFS/scripts/' + f)]
 
         if cfg.options.sitl_rgbled:
             env.CXXFLAGS += ['-DWITH_SITL_RGBLED']
@@ -816,9 +820,7 @@ class sitl(Board):
 
         if 'clang++' in cfg.env.COMPILER_CXX:
             print("Disabling SLP for clang++")
-            env.CXXFLAGS += [
-                '-fno-slp-vectorize' # compiler bug when trying to use SLP
-            ]
+            env.CXXFLAGS += ['-fno-slp-vectorize']  # compiler bug when trying to use SLP
 
         if cfg.options.force_32bit:
             # 32bit platform flags
@@ -833,18 +835,19 @@ class sitl(Board):
             ]
 
         # whitelist of compilers which we should build with -Werror
-        gcc_whitelist = frozenset([
-                ('11','3','0'),
-                ('11','4','0'),
-                ('12','1','0'),
-            ])
+        gcc_whitelist = frozenset(
+            [
+                ('11', '3', '0'),
+                ('11', '4', '0'),
+                ('12', '1', '0'),
+            ]
+        )
 
         # initialise werr_enabled from defaults:
         werr_enabled = bool('g++' in cfg.env.COMPILER_CXX and cfg.env.CC_VERSION in gcc_whitelist)
 
         # now process overrides to that default:
-        if (cfg.options.Werror is not None and
-                cfg.options.Werror == cfg.options.disable_Werror):
+        if cfg.options.Werror is not None and cfg.options.Werror == cfg.options.disable_Werror:
             cfg.fatal("Asked to both enable and disable Werror")
 
         if cfg.options.Werror is not None:
@@ -855,7 +858,7 @@ class sitl(Board):
         if werr_enabled:
             cfg.msg("Enabling -Werror", "yes")
             if '-Werror' not in env.CXXFLAGS:
-                env.CXXFLAGS += [ '-Werror' ]
+                env.CXXFLAGS += ['-Werror']
         else:
             cfg.msg("Enabling -Werror", "no")
             if '-Werror' in env.CXXFLAGS:
@@ -870,46 +873,42 @@ class sitl_periph(sitl):
         cfg.env.AP_PERIPH = 1
         super(sitl_periph, self).configure_env(cfg, env)
         env.DEFINES.update(
-            HAL_BUILD_AP_PERIPH = 1,
-            PERIPH_FW = 1,
-            HAL_RAM_RESERVE_START = 0,
-
-            CANARD_ENABLE_CANFD = 1,
-            CANARD_ENABLE_TAO_OPTION = 1,
-            CANARD_MULTI_IFACE = 1,
-
+            HAL_BUILD_AP_PERIPH=1,
+            PERIPH_FW=1,
+            HAL_RAM_RESERVE_START=0,
+            CANARD_ENABLE_CANFD=1,
+            CANARD_ENABLE_TAO_OPTION=1,
+            CANARD_MULTI_IFACE=1,
             # FIXME: SITL library should not be using AP_AHRS:
-            AP_AHRS_ENABLED = 1,
-            AP_AHRS_BACKEND_DEFAULT_ENABLED = 0,
-            AP_AHRS_DCM_ENABLED = 1,  # need a default backend
-            HAL_EXTERNAL_AHRS_ENABLED = 0,
-
-            HAL_MAVLINK_BINDINGS_ENABLED = 1,
-
-            AP_AIRSPEED_AUTOCAL_ENABLE = 0,
-            AP_CAN_SLCAN_ENABLED = 0,
-            AP_ICENGINE_ENABLED = 0,
-            AP_MISSION_ENABLED = 0,
-            AP_RCPROTOCOL_ENABLED = 0,
-            AP_RTC_ENABLED = 0,
-            AP_SCHEDULER_ENABLED = 0,
-            AP_SCRIPTING_ENABLED = 0,
-            AP_STATS_ENABLED = 0,
-            AP_UART_MONITOR_ENABLED = 1,
-            COMPASS_CAL_ENABLED = 0,
-            COMPASS_LEARN_ENABLED = 0,
-            COMPASS_MOT_ENABLED = 0,
-            HAL_CAN_DEFAULT_NODE_ID = 0,
-            HAL_CANMANAGER_ENABLED = 0,
-            HAL_GCS_ENABLED = 0,
-            HAL_GENERATOR_ENABLED = 0,
-            HAL_LOGGING_ENABLED = 0,
-            HAL_LOGGING_MAVLINK_ENABLED = 0,
-            HAL_PROXIMITY_ENABLED = 0,
-            HAL_RALLY_ENABLED = 0,
-            HAL_SUPPORT_RCOUT_SERIAL = 0,
-            AP_TERRAIN_AVAILABLE = 0,
-            AP_CUSTOMROTATIONS_ENABLED = 0,
+            AP_AHRS_ENABLED=1,
+            AP_AHRS_BACKEND_DEFAULT_ENABLED=0,
+            AP_AHRS_DCM_ENABLED=1,  # need a default backend
+            HAL_EXTERNAL_AHRS_ENABLED=0,
+            HAL_MAVLINK_BINDINGS_ENABLED=1,
+            AP_AIRSPEED_AUTOCAL_ENABLE=0,
+            AP_CAN_SLCAN_ENABLED=0,
+            AP_ICENGINE_ENABLED=0,
+            AP_MISSION_ENABLED=0,
+            AP_RCPROTOCOL_ENABLED=0,
+            AP_RTC_ENABLED=0,
+            AP_SCHEDULER_ENABLED=0,
+            AP_SCRIPTING_ENABLED=0,
+            AP_STATS_ENABLED=0,
+            AP_UART_MONITOR_ENABLED=1,
+            COMPASS_CAL_ENABLED=0,
+            COMPASS_LEARN_ENABLED=0,
+            COMPASS_MOT_ENABLED=0,
+            HAL_CAN_DEFAULT_NODE_ID=0,
+            HAL_CANMANAGER_ENABLED=0,
+            HAL_GCS_ENABLED=0,
+            HAL_GENERATOR_ENABLED=0,
+            HAL_LOGGING_ENABLED=0,
+            HAL_LOGGING_MAVLINK_ENABLED=0,
+            HAL_PROXIMITY_ENABLED=0,
+            HAL_RALLY_ENABLED=0,
+            HAL_SUPPORT_RCOUT_SERIAL=0,
+            AP_TERRAIN_AVAILABLE=0,
+            AP_CUSTOMROTATIONS_ENABLED=0,
         )
 
         try:
@@ -918,95 +917,98 @@ class sitl_periph(sitl):
             pass
         env.CXXFLAGS += ['-DHAL_NAVEKF2_AVAILABLE=0']
 
+
 class sitl_periph_universal(sitl_periph):
     def configure_env(self, cfg, env):
         super(sitl_periph_universal, self).configure_env(cfg, env)
         env.DEFINES.update(
-            CAN_APP_NODE_NAME = '"org.ardupilot.ap_periph_universal"',
-            APJ_BOARD_ID = 100,
-
-            HAL_PERIPH_ENABLE_GPS = 1,
-            HAL_PERIPH_ENABLE_AIRSPEED = 1,
-            HAL_PERIPH_ENABLE_MAG = 1,
-            HAL_PERIPH_ENABLE_BARO = 1,
-            HAL_PERIPH_ENABLE_RANGEFINDER = 1,
-            HAL_PERIPH_ENABLE_BATTERY = 1,
-            HAL_PERIPH_ENABLE_EFI = 1,
-            HAL_PERIPH_ENABLE_RPM = 1,
-            HAL_PERIPH_ENABLE_RPM_STREAM = 1,
-            HAL_PERIPH_ENABLE_RC_OUT = 1,
-            HAL_PERIPH_ENABLE_ADSB = 1,
-            HAL_PERIPH_ENABLE_SERIAL_OPTIONS = 1,
-            AP_AIRSPEED_ENABLED = 1,
-            AP_BATTERY_ESC_ENABLED = 1,
-            HAL_PWM_COUNT = 32,
-            HAL_WITH_ESC_TELEM = 1,
-            AP_EXTENDED_ESC_TELEM_ENABLED = 1,
-            AP_TERRAIN_AVAILABLE = 1,
+            CAN_APP_NODE_NAME='"org.ardupilot.ap_periph_universal"',
+            APJ_BOARD_ID=100,
+            HAL_PERIPH_ENABLE_GPS=1,
+            HAL_PERIPH_ENABLE_AIRSPEED=1,
+            HAL_PERIPH_ENABLE_MAG=1,
+            HAL_PERIPH_ENABLE_BARO=1,
+            HAL_PERIPH_ENABLE_RANGEFINDER=1,
+            HAL_PERIPH_ENABLE_BATTERY=1,
+            HAL_PERIPH_ENABLE_EFI=1,
+            HAL_PERIPH_ENABLE_RPM=1,
+            HAL_PERIPH_ENABLE_RPM_STREAM=1,
+            HAL_PERIPH_ENABLE_RC_OUT=1,
+            HAL_PERIPH_ENABLE_ADSB=1,
+            HAL_PERIPH_ENABLE_SERIAL_OPTIONS=1,
+            AP_AIRSPEED_ENABLED=1,
+            AP_BATTERY_ESC_ENABLED=1,
+            HAL_PWM_COUNT=32,
+            HAL_WITH_ESC_TELEM=1,
+            AP_EXTENDED_ESC_TELEM_ENABLED=1,
+            AP_TERRAIN_AVAILABLE=1,
         )
+
 
 class sitl_periph_gps(sitl_periph):
     def configure_env(self, cfg, env):
         cfg.env.AP_PERIPH = 1
         super(sitl_periph_gps, self).configure_env(cfg, env)
         env.DEFINES.update(
-            HAL_BUILD_AP_PERIPH = 1,
-            PERIPH_FW = 1,
-            CAN_APP_NODE_NAME = '"org.ardupilot.ap_periph_gps"',
-            APJ_BOARD_ID = 101,
-
-            HAL_PERIPH_ENABLE_GPS = 1,
+            HAL_BUILD_AP_PERIPH=1,
+            PERIPH_FW=1,
+            CAN_APP_NODE_NAME='"org.ardupilot.ap_periph_gps"',
+            APJ_BOARD_ID=101,
+            HAL_PERIPH_ENABLE_GPS=1,
         )
+
 
 class sitl_periph_battmon(sitl_periph):
     def configure_env(self, cfg, env):
         cfg.env.AP_PERIPH = 1
         super(sitl_periph_battmon, self).configure_env(cfg, env)
         env.DEFINES.update(
-            HAL_BUILD_AP_PERIPH = 1,
-            PERIPH_FW = 1,
-            CAN_APP_NODE_NAME = '"org.ardupilot.ap_periph_battmon"',
-            APJ_BOARD_ID = 101,
-
-            HAL_PERIPH_ENABLE_BATTERY = 1,
+            HAL_BUILD_AP_PERIPH=1,
+            PERIPH_FW=1,
+            CAN_APP_NODE_NAME='"org.ardupilot.ap_periph_battmon"',
+            APJ_BOARD_ID=101,
+            HAL_PERIPH_ENABLE_BATTERY=1,
         )
+
 
 class esp32(Board):
     abstract = True
     toolchain = 'xtensa-esp32-elf'
+
     def configure_env(self, cfg, env):
         env.BOARD_CLASS = "ESP32"
 
         def expand_path(p):
-            print("USING EXPRESSIF IDF:"+str(env.idf))
-            return cfg.root.find_dir(env.IDF+p).abspath()
+            print("USING EXPRESSIF IDF:" + str(env.idf))
+            return cfg.root.find_dir(env.IDF + p).abspath()
+
         try:
-            env.IDF = os.environ['IDF_PATH'] 
+            env.IDF = os.environ['IDF_PATH']
         except:
-            env.IDF = cfg.srcnode.abspath()+"/modules/esp_idf"
+            env.IDF = cfg.srcnode.abspath() + "/modules/esp_idf"
 
         super(esp32, self).configure_env(cfg, env)
         cfg.load('esp32')
         env.DEFINES.update(
-            CONFIG_HAL_BOARD = 'HAL_BOARD_ESP32',
+            CONFIG_HAL_BOARD='HAL_BOARD_ESP32',
         )
 
-        tt = self.name[5:] #leave off 'esp32' so we just get 'buzz','diy','icarus, etc
-        
+        tt = self.name[5:]  # leave off 'esp32' so we just get 'buzz','diy','icarus, etc
+
         # this makes sure we get the correct subtype
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_ESP32_%s' %  tt.upper() ,
-            HAL_HAVE_HARDWARE_DOUBLE = '1',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_ESP32_%s' % tt.upper(),
+            HAL_HAVE_HARDWARE_DOUBLE='1',
         )
 
         if self.name.endswith("empty"):
             # for empty targets build as SIM-on-HW
-            env.DEFINES.update(AP_SIM_ENABLED = 1)
+            env.DEFINES.update(AP_SIM_ENABLED=1)
             env.AP_LIBRARIES += [
                 'SITL',
             ]
         else:
-            env.DEFINES.update(AP_SIM_ENABLED = 0)
+            env.DEFINES.update(AP_SIM_ENABLED=0)
 
         env.AP_LIBRARIES += [
             'AP_HAL_ESP32',
@@ -1019,20 +1021,22 @@ class esp32(Board):
         ]
         env.CFLAGS.remove('-Werror=undef')
 
-        env.CXXFLAGS += ['-mlongcalls',
-                         '-Os',
-                         '-g',
-                         '-ffunction-sections',
-                         '-fdata-sections',
-                         '-fno-exceptions',
-                         '-fno-rtti',
-                         '-nostdlib',
-                         '-fstrict-volatile-bitfields',
-                         '-Wno-sign-compare',
-                         '-fno-inline-functions',
-                         '-mlongcalls',
-                         '-fsingle-precision-constant', # force const vals to be float , not double. so 100.0 means 100.0f 
-                         '-fno-threadsafe-statics']
+        env.CXXFLAGS += [
+            '-mlongcalls',
+            '-Os',
+            '-g',
+            '-ffunction-sections',
+            '-fdata-sections',
+            '-fno-exceptions',
+            '-fno-rtti',
+            '-nostdlib',
+            '-fstrict-volatile-bitfields',
+            '-Wno-sign-compare',
+            '-fno-inline-functions',
+            '-mlongcalls',
+            '-fsingle-precision-constant',  # force const vals to be float , not double. so 100.0 means 100.0f
+            '-fno-threadsafe-statics',
+        ]
         env.CXXFLAGS.remove('-Werror=undef')
         env.CXXFLAGS.remove('-Werror=shadow')
 
@@ -1040,21 +1044,22 @@ class esp32(Board):
         env.LINKFLAGS += ['-Wl,--wrap,malloc']
 
         env.INCLUDES += [
-                cfg.srcnode.find_dir('libraries/AP_HAL_ESP32/boards').abspath(),
-            ]
+            cfg.srcnode.find_dir('libraries/AP_HAL_ESP32/boards').abspath(),
+        ]
         env.AP_PROGRAM_AS_STLIB = True
-        #if cfg.options.enable_profile:
+        # if cfg.options.enable_profile:
         #    env.CXXFLAGS += ['-pg',
         #                     '-DENABLE_PROFILE=1']
+
     def pre_build(self, bld):
         '''pre-build hook that gets called before dynamic sources'''
         from waflib.Context import load_tool
+
         module = load_tool('esp32', [], with_sys_path=True)
         fun = getattr(module, 'pre_build', None)
         if fun:
             fun(bld)
         super(esp32, self).pre_build(bld)
-
 
     def build(self, bld):
         super(esp32, self).build(bld)
@@ -1063,9 +1068,11 @@ class esp32(Board):
     def get_name(self):
         return self.__class__.__name__
 
+
 class esp32s3(esp32):
     abstract = True
     toolchain = 'xtensa-esp32s3-elf'
+
 
 class chibios(Board):
     abstract = True
@@ -1081,9 +1088,9 @@ class chibios(Board):
         env.BOARD_CLASS = "ChibiOS"
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD = 'HAL_BOARD_CHIBIOS',
-            HAVE_STD_NULLPTR_T = 0,
-            USE_LIBC_REALLOC = 0,
+            CONFIG_HAL_BOARD='HAL_BOARD_CHIBIOS',
+            HAVE_STD_NULLPTR_T=0,
+            USE_LIBC_REALLOC=0,
         )
 
         env.AP_LIBRARIES += [
@@ -1092,7 +1099,9 @@ class chibios(Board):
 
         # make board name available for USB IDs
         env.CHIBIOS_BOARD_NAME = 'HAL_BOARD_NAME="%s"' % self.name
-        env.HAL_MAX_STACK_FRAME_SIZE = 'HAL_MAX_STACK_FRAME_SIZE=%d' % 1300 # set per Wframe-larger-than, ensure its same
+        env.HAL_MAX_STACK_FRAME_SIZE = (
+            'HAL_MAX_STACK_FRAME_SIZE=%d' % 1300
+        )  # set per Wframe-larger-than, ensure its same
         env.CFLAGS += cfg.env.CPU_FLAGS + [
             '-Wlogical-op',
             '-Wframe-larger-than=1300',
@@ -1129,23 +1138,21 @@ class chibios(Board):
             '--specs=nosys.specs',
             '-D__USE_CMSIS',
             '-Werror=deprecated-declarations',
-            '-DNDEBUG=1'
+            '-DNDEBUG=1',
         ]
         if not cfg.options.Werror:
             env.CFLAGS += [
-            '-Wno-error=double-promotion',
-            '-Wno-error=missing-declarations',
-            '-Wno-error=float-equal',
-            '-Wno-error=cpp',
+                '-Wno-error=double-promotion',
+                '-Wno-error=missing-declarations',
+                '-Wno-error=float-equal',
+                '-Wno-error=cpp',
             ]
 
         env.CXXFLAGS += env.CFLAGS + [
             '-fno-rtti',
             '-fno-threadsafe-statics',
         ]
-        env.CFLAGS += [
-            '-std=c11'
-        ]
+        env.CFLAGS += ['-std=c11']
 
         if Utils.unversioned_sys_platform() == 'cygwin':
             env.CXXFLAGS += ['-DCYGWIN_BUILD']
@@ -1174,7 +1181,12 @@ class chibios(Board):
             '-L%s' % env.BUILDROOT,
             '-L%s' % cfg.srcnode.make_node('modules/ChibiOS/os/common/startup/ARMCMx/compilers/GCC/ld/').abspath(),
             '-L%s' % cfg.srcnode.make_node('libraries/AP_HAL_ChibiOS/hwdef/common/').abspath(),
-            '-Wl,-Map,Linker.map,%s--cref,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=ldscript.ld,--defsym=__process_stack_size__=%s,--defsym=__main_stack_size__=%s' % ("--print-memory-usage," if cfg.env.EXT_FLASH_SIZE_MB > 0 and cfg.env.INT_FLASH_PRIMARY == 0 else "", cfg.env.PROCESS_STACK, cfg.env.MAIN_STACK)
+            '-Wl,-Map,Linker.map,%s--cref,--gc-sections,--no-warn-mismatch,--library-path=/ld,--script=ldscript.ld,--defsym=__process_stack_size__=%s,--defsym=__main_stack_size__=%s'
+            % (
+                "--print-memory-usage," if cfg.env.EXT_FLASH_SIZE_MB > 0 and cfg.env.INT_FLASH_PRIMARY == 0 else "",
+                cfg.env.PROCESS_STACK,
+                cfg.env.MAIN_STACK,
+            ),
         ]
 
         if cfg.env.DEBUG:
@@ -1191,49 +1203,48 @@ class chibios(Board):
             if not self.cc_version_gte(cfg, 10, 2):
                 # require at least 10.2 compiler
                 cfg.fatal("ChibiOS build requires g++ version 10.2.1 or later, found %s" % '.'.join(cfg.env.CC_VERSION))
-            
+
         if cfg.env.ENABLE_ASSERTS:
             cfg.msg("Enabling ChibiOS asserts", "yes")
-            env.CFLAGS += [ '-DHAL_CHIBIOS_ENABLE_ASSERTS' ]
-            env.CXXFLAGS += [ '-DHAL_CHIBIOS_ENABLE_ASSERTS' ]
+            env.CFLAGS += ['-DHAL_CHIBIOS_ENABLE_ASSERTS']
+            env.CXXFLAGS += ['-DHAL_CHIBIOS_ENABLE_ASSERTS']
         else:
             cfg.msg("Enabling ChibiOS asserts", "no")
 
-
         if cfg.env.SAVE_TEMPS:
-            env.CXXFLAGS += [ '-S', '-save-temps=obj' ]
+            env.CXXFLAGS += ['-S', '-save-temps=obj']
 
         if cfg.options.disable_watchdog:
             cfg.msg("Disabling Watchdog", "yes")
-            env.CFLAGS += [ '-DDISABLE_WATCHDOG' ]
-            env.CXXFLAGS += [ '-DDISABLE_WATCHDOG' ]
+            env.CFLAGS += ['-DDISABLE_WATCHDOG']
+            env.CXXFLAGS += ['-DDISABLE_WATCHDOG']
         else:
             cfg.msg("Disabling Watchdog", "no")
 
         if cfg.env.ENABLE_MALLOC_GUARD:
             cfg.msg("Enabling malloc guard", "yes")
-            env.CFLAGS += [ '-DHAL_CHIBIOS_ENABLE_MALLOC_GUARD' ]
-            env.CXXFLAGS += [ '-DHAL_CHIBIOS_ENABLE_MALLOC_GUARD' ]
+            env.CFLAGS += ['-DHAL_CHIBIOS_ENABLE_MALLOC_GUARD']
+            env.CXXFLAGS += ['-DHAL_CHIBIOS_ENABLE_MALLOC_GUARD']
         else:
             cfg.msg("Enabling malloc guard", "no")
-            
+
         if cfg.env.ENABLE_STATS:
             cfg.msg("Enabling ChibiOS thread statistics", "yes")
-            env.CFLAGS += [ '-DHAL_ENABLE_THREAD_STATISTICS' ]
-            env.CXXFLAGS += [ '-DHAL_ENABLE_THREAD_STATISTICS' ]
+            env.CFLAGS += ['-DHAL_ENABLE_THREAD_STATISTICS']
+            env.CXXFLAGS += ['-DHAL_ENABLE_THREAD_STATISTICS']
         else:
             cfg.msg("Enabling ChibiOS thread statistics", "no")
 
         if cfg.env.SIM_ENABLED:
             env.DEFINES.update(
-                AP_SIM_ENABLED = 1,
+                AP_SIM_ENABLED=1,
             )
             env.AP_LIBRARIES += [
                 'SITL',
             ]
         else:
             env.DEFINES.update(
-                AP_SIM_ENABLED = 0,
+                AP_SIM_ENABLED=0,
             )
 
         env.LIB += ['gcc', 'm']
@@ -1244,19 +1255,21 @@ class chibios(Board):
 
         env.INCLUDES += [
             cfg.srcnode.find_dir('libraries/AP_GyroFFT/CMSIS_5/include').abspath(),
-            cfg.srcnode.find_dir('modules/lwip/src/include/compat/posix').abspath()
+            cfg.srcnode.find_dir('modules/lwip/src/include/compat/posix').abspath(),
         ]
 
         # whitelist of compilers which we should build with -Werror
-        gcc_whitelist = frozenset([
-            ('4','9','3'),
-            ('6','3','1'),
-            ('9','2','1'),
-            ('9','3','1'),
-            ('10','2','1'),
-            ('11','3','0'),
-            ('11','4','0'),
-        ])
+        gcc_whitelist = frozenset(
+            [
+                ('4', '9', '3'),
+                ('6', '3', '1'),
+                ('9', '2', '1'),
+                ('9', '3', '1'),
+                ('10', '2', '1'),
+                ('11', '3', '0'),
+                ('11', '4', '0'),
+            ]
+        )
 
         if cfg.env.HAL_CANFD_SUPPORTED:
             env.DEFINES.update(CANARD_ENABLE_CANFD=1)
@@ -1264,11 +1277,11 @@ class chibios(Board):
             env.DEFINES.update(CANARD_ENABLE_TAO_OPTION=1)
         if not cfg.options.bootloader and cfg.env.HAL_NUM_CAN_IFACES:
             if int(cfg.env.HAL_NUM_CAN_IFACES) >= 1:
-                env.DEFINES.update(CANARD_IFACE_ALL=(1<<int(cfg.env.HAL_NUM_CAN_IFACES))-1)
+                env.DEFINES.update(CANARD_IFACE_ALL=(1 << int(cfg.env.HAL_NUM_CAN_IFACES)) - 1)
         if cfg.options.Werror or cfg.env.CC_VERSION in gcc_whitelist:
             cfg.msg("Enabling -Werror", "yes")
             if '-Werror' not in env.CXXFLAGS:
-                env.CXXFLAGS += [ '-Werror' ]
+                env.CXXFLAGS += ['-Werror']
         else:
             cfg.msg("Enabling -Werror", "no")
 
@@ -1285,6 +1298,7 @@ class chibios(Board):
 
         try:
             import intelhex
+
             env.HAVE_INTEL_HEX = True
             cfg.msg("Checking for intelhex module:", 'OK')
         except Exception:
@@ -1298,8 +1312,8 @@ class chibios(Board):
             # we enable it in a CI test to catch incorrect usage
             env.CXXFLAGS += [
                 "-DNEW_NOTHROW=new",
-                "-fcheck-new", # rely on -fcheck-new ensuring nullptr checks
-                ]
+                "-fcheck-new",  # rely on -fcheck-new ensuring nullptr checks
+            ]
 
     def build(self, bld):
         super(chibios, self).build(bld)
@@ -1309,6 +1323,7 @@ class chibios(Board):
     def pre_build(self, bld):
         '''pre-build hook that gets called before dynamic sources'''
         from waflib.Context import load_tool
+
         module = load_tool('chibios', [], with_sys_path=True)
         fun = getattr(module, 'pre_build', None)
         if fun:
@@ -1317,6 +1332,7 @@ class chibios(Board):
 
     def get_name(self):
         return self.name
+
 
 class linux(Board):
     def __init__(self):
@@ -1333,9 +1349,9 @@ class linux(Board):
         env.BOARD_CLASS = "LINUX"
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD = 'HAL_BOARD_LINUX',
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_NONE',
-            AP_SIM_ENABLED = 0,
+            CONFIG_HAL_BOARD='HAL_BOARD_LINUX',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_NONE',
+            AP_SIM_ENABLED=0,
         )
 
         if not cfg.env.DEBUG:
@@ -1352,7 +1368,9 @@ class linux(Board):
         cfg.check_libdl(env)
         cfg.check_libiio(env)
 
-        env.LINKFLAGS += ['-pthread',]
+        env.LINKFLAGS += [
+            '-pthread',
+        ]
         env.AP_LIBRARIES += [
             'AP_HAL_Linux',
         ]
@@ -1362,7 +1380,7 @@ class linux(Board):
 
         if cfg.options.force_32bit:
             env.DEFINES.update(
-                HAL_FORCE_32BIT = 1,
+                HAL_FORCE_32BIT=1,
             )
             # 32bit platform flags
             cfg.env.CXXFLAGS += [
@@ -1376,17 +1394,16 @@ class linux(Board):
             ]
         else:
             env.DEFINES.update(
-                HAL_FORCE_32BIT = 0,
+                HAL_FORCE_32BIT=0,
             )
         if self.with_can and cfg.options.board == 'linux':
             cfg.env.HAL_NUM_CAN_IFACES = 2
             cfg.define('HAL_NUM_CAN_IFACES', 2)
             cfg.define('HAL_CANFD_SUPPORTED', 1)
             cfg.define('CANARD_ENABLE_CANFD', 1)
-        
+
         if self.with_can:
-            env.DEFINES.update(CANARD_MULTI_IFACE=1,
-                               CANARD_IFACE_ALL = 0x3)
+            env.DEFINES.update(CANARD_MULTI_IFACE=1, CANARD_IFACE_ALL=0x3)
 
         if cfg.options.apstatedir:
             cfg.define('AP_STATEDIR', cfg.options.apstatedir)
@@ -1420,6 +1437,7 @@ class navigator(linux):
             CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR',
         )
 
+
 class erleboard(linux):
     toolchain = 'arm-linux-gnueabihf'
 
@@ -1427,8 +1445,9 @@ class erleboard(linux):
         super(erleboard, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_ERLEBOARD',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_ERLEBOARD',
         )
+
 
 class navio(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1437,8 +1456,9 @@ class navio(linux):
         super(navio, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_NAVIO',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_NAVIO',
         )
+
 
 class navio2(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1447,8 +1467,9 @@ class navio2(linux):
         super(navio2, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_NAVIO2',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_NAVIO2',
         )
+
 
 class edge(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1460,8 +1481,9 @@ class edge(linux):
         super(edge, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_EDGE',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_EDGE',
         )
+
 
 class zynq(linux):
     toolchain = 'arm-xilinx-linux-gnueabi'
@@ -1470,8 +1492,9 @@ class zynq(linux):
         super(zynq, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_ZYNQ',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_ZYNQ',
         )
+
 
 class ocpoc_zynq(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1480,8 +1503,9 @@ class ocpoc_zynq(linux):
         super(ocpoc_zynq, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_OCPOC_ZYNQ',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_OCPOC_ZYNQ',
         )
+
 
 class bbbmini(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1493,8 +1517,9 @@ class bbbmini(linux):
         super(bbbmini, self).configure_env(cfg, env)
         cfg.env.HAL_NUM_CAN_IFACES = 1
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_BBBMINI',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_BBBMINI',
         )
+
 
 class blue(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1507,8 +1532,9 @@ class blue(linux):
         cfg.env.HAL_NUM_CAN_IFACES = 1
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_BLUE',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_BLUE',
         )
+
 
 class pocket(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1521,8 +1547,9 @@ class pocket(linux):
         cfg.env.HAL_NUM_CAN_IFACES = 1
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_POCKET',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_POCKET',
         )
+
 
 class pxf(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1531,8 +1558,9 @@ class pxf(linux):
         super(pxf, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_PXF',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_PXF',
         )
+
 
 class bebop(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1541,8 +1569,9 @@ class bebop(linux):
         super(bebop, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_BEBOP',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_BEBOP',
         )
+
 
 class vnav(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1551,9 +1580,10 @@ class vnav(linux):
         super(vnav, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_VNAV',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_VNAV',
         )
-        
+
+
 class disco(linux):
     toolchain = 'arm-linux-gnueabihf'
 
@@ -1561,8 +1591,9 @@ class disco(linux):
         super(disco, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_DISCO',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_DISCO',
         )
+
 
 class erlebrain2(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1571,8 +1602,9 @@ class erlebrain2(linux):
         super(erlebrain2, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_ERLEBRAIN2',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_ERLEBRAIN2',
         )
+
 
 class bhat(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1581,8 +1613,9 @@ class bhat(linux):
         super(bhat, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_BH',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_BH',
         )
+
 
 class dark(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1591,8 +1624,9 @@ class dark(linux):
         super(dark, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_DARK',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_DARK',
         )
+
 
 class pxfmini(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1601,8 +1635,20 @@ class pxfmini(linux):
         super(pxfmini, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_PXFMINI',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_PXFMINI',
         )
+
+
+class sharky(linux):
+    toolchain = 'arm-linux-gnueabihf'
+
+    def configure_env(self, cfg, env):
+        super(sharky, self).configure_env(cfg, env)
+
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_SHARKY',
+        )
+
 
 class aero(linux):
     def __init__(self):
@@ -1612,8 +1658,9 @@ class aero(linux):
         super(aero, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_AERO',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_AERO',
         )
+
 
 class rst_zynq(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1622,8 +1669,9 @@ class rst_zynq(linux):
         super(rst_zynq, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_RST_ZYNQ',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_RST_ZYNQ',
         )
+
 
 class obal(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1632,8 +1680,9 @@ class obal(linux):
         super(obal, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_OBAL_V1',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_OBAL_V1',
         )
+
 
 class canzero(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -1645,22 +1694,27 @@ class canzero(linux):
         super(canzero, self).configure_env(cfg, env)
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_CANZERO',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_CANZERO',
         )
-        
+
+
 class SITL_static(sitl):
     def configure_env(self, cfg, env):
         super(SITL_static, self).configure_env(cfg, env)
         cfg.env.STATIC_LINKING = True
 
+
 class SITL_x86_64_linux_gnu(SITL_static):
     toolchain = 'x86_64-linux-gnu'
+
 
 class SITL_arm_linux_gnueabihf(SITL_static):
     toolchain = 'arm-linux-gnueabihf'
 
+
 class QURT(Board):
     '''support for QURT based boards'''
+
     toolchain = 'custom'
 
     def __init__(self):
@@ -1669,7 +1723,7 @@ class QURT(Board):
     def configure_toolchain(self, cfg):
         cfg.env.CXX_NAME = 'gcc'
         cfg.env.HEXAGON_SDK_DIR = "/opt/hexagon-sdk/4.1.0.4-lite"
-        cfg.env.CC_VERSION = ('4','1','0')
+        cfg.env.CC_VERSION = ('4', '1', '0')
         cfg.env.TOOLCHAIN_DIR = cfg.env.HEXAGON_SDK_DIR + "/tools/HEXAGON_Tools/8.4.05/Tools"
         cfg.env.COMPILER_CC = cfg.env.TOOLCHAIN_DIR + "/bin/hexagon-clang"
         cfg.env.COMPILER_CXX = cfg.env.TOOLCHAIN_DIR + "/bin/hexagon-clang++"
@@ -1694,10 +1748,7 @@ class QURT(Board):
         cfg.env.STLIBPATH_ST = '-L%s'
         cfg.env.STLIB_MARKER = ''
         cfg.env.STLIB_ST = '-l%s'
-        cfg.env.LDFLAGS = [
-            '-lgcc',
-            cfg.env.TOOLCHAIN_DIR + '/target/hexagon/lib/v66/G0/pic/finiS.o'
-        ]
+        cfg.env.LDFLAGS = ['-lgcc', cfg.env.TOOLCHAIN_DIR + '/target/hexagon/lib/v66/G0/pic/finiS.o']
 
     def configure_env(self, cfg, env):
         super(QURT, self).configure_env(cfg, env)
@@ -1712,9 +1763,9 @@ class QURT(Board):
         env.CFLAGS += CFLAGS.split()
 
         env.DEFINES.update(
-            CONFIG_HAL_BOARD = 'HAL_BOARD_QURT',
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_NONE',
-            AP_SIM_ENABLED = 0,
+            CONFIG_HAL_BOARD='HAL_BOARD_QURT',
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_NONE',
+            AP_SIM_ENABLED=0,
         )
 
         env.LINKFLAGS = [
@@ -1734,7 +1785,7 @@ class QURT(Board):
             "--wrap=printf",
             "--wrap=strdup",
             "--wrap=__stack_chk_fail",
-            "-lc"
+            "-lc",
         ]
 
         if not cfg.env.DEBUG:
@@ -1753,4 +1804,3 @@ class QURT(Board):
     def get_name(self):
         # get name of class
         return self.__class__.__name__
-    
