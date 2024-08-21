@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "GPIO.h"
+#include "GPIO_RPI.h"
 #include "PollerThread.h"
 #include "Scheduler.h"
 #include "Semaphores.h"
