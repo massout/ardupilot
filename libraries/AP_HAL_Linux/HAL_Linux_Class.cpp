@@ -194,6 +194,8 @@ static RCInput_RCProtocol rcinDriver{"/dev/ttyPS0", NULL};
 // opened in the linux driver and instead user needs to provide a uart via
 // SERIALn_PROTOCOL
 static RCInput_RCProtocol rcinDriver{nullptr, nullptr};
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
+static RCInput_RPI rcinDriver;
 #else
 static RCInput rcinDriver;
 #endif

@@ -83,8 +83,8 @@ SPIDesc SPIDeviceManager::_device[] = {
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("mpu9250", 0, 0, SPI_MODE_0, 8, RPI_GPIO_<24>(), 1 * MHZ, 11 * MHZ),
-    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, RPI_GPIO_<26>(), 1 * MHZ, 11 * MHZ),
+    SPIDesc("mpu9250", 0, 0, SPI_MODE_0, 8, RPI_GPIO_<7>(), 1 * MHZ, 11 * MHZ),
+    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, RPI_GPIO_<8>(), 1 * MHZ, 11 * MHZ),
     SPIDesc("ublox", 1, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 5 * MHZ, 5 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR
