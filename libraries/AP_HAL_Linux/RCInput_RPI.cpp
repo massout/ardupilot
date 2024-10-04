@@ -53,7 +53,7 @@
 // Each gpio stands for a rcinput channel,
 // the first one in RcChnGpioTbl is channel 1 in receiver
 static uint16_t RcChnGpioTbl[RCIN_RPI_CHN_NUM] = {
-    RPI_GPIO_<24>(), RPI_GPIO_<6>(),  RPI_GPIO_<12>(), RPI_GPIO_<13>(),
+    RPI_GPIO_<5>(),  RPI_GPIO_<6>(),  RPI_GPIO_<12>(), RPI_GPIO_<13>(),
     RPI_GPIO_<19>(), RPI_GPIO_<20>(), RPI_GPIO_<21>(), RPI_GPIO_<26>()};
 #elif (CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_OBAL_V1)
 #define RCIN_RPI_SIG_HIGH 0
@@ -69,7 +69,7 @@ static uint16_t RcChnGpioTbl[RCIN_RPI_CHN_NUM] = {
 #define PAGE_SIZE (4 * 1024)
     NAVIO_GPIO_PPM_IN
 #else
-    RPI_GPIO_<4>()
+    RPI_GPIO_<24>()
 #endif
 };
 #endif  // CONFIG_HAL_BOARD_SUBTYPE
