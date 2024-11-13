@@ -194,8 +194,8 @@ static RCInput_RCProtocol rcinDriver{"/dev/ttyPS0", NULL};
 // opened in the linux driver and instead user needs to provide a uart via
 // SERIALn_PROTOCOL
 static RCInput_RCProtocol rcinDriver{nullptr, nullptr};
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
-static RCInput_RPI rcinDriver;
+// #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
+//  static RCInput_RPI rcinDriver;
 #else
 static RCInput rcinDriver;
 #endif
@@ -230,6 +230,10 @@ static RCOutput_PCA9685 rcoutDriver(
 static RCOutput_PCA9685 rcoutDriver(
     i2c_mgr_instance.get_device(1, PCA9685_QUINARY_ADDRESS), 0, 0,
     RPI_GPIO_<27>());
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
+static RCOutput_PCA9685 rcoutDriver(
+    i2c_mgr_instance.get_device(1, PCA9685_PRIMARY_ADDRESS), 0, 0,
+    RPI_GPIO_<3>());
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR
 static RCOutput_PCA9685 rcoutDriver(
     i2c_mgr_instance.get_device(4, PCA9685_PRIMARY_ADDRESS), 24576000, 0,
