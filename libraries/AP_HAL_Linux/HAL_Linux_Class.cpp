@@ -177,6 +177,8 @@ static RCInput_RPI rcinDriver;
 static RCInput_ZYNQ rcinDriver;
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP
 static RCInput_UDP rcinDriver;
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
+static RCInput_RCProtocol rcinDriver{"/dev/ttyS0", NULL};
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_DISCO
 static RCInput_Multi rcinDriver{
     2, NEW_NOTHROW RCInput_RCProtocol("/dev/uart-sbus", "/dev/uart-sumd"),
@@ -194,8 +196,6 @@ static RCInput_RCProtocol rcinDriver{"/dev/ttyPS0", NULL};
 // opened in the linux driver and instead user needs to provide a uart via
 // SERIALn_PROTOCOL
 static RCInput_RCProtocol rcinDriver{nullptr, nullptr};
-// #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
-//  static RCInput_RPI rcinDriver;
 #else
 static RCInput rcinDriver;
 #endif
