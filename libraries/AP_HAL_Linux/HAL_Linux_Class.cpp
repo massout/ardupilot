@@ -178,7 +178,7 @@ static RCInput_ZYNQ rcinDriver;
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP
 static RCInput_UDP rcinDriver;
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
-static RCInput_RCProtocol rcinDriver{"/dev/ttyS0", NULL};
+static RCInput_RCProtocol rcinDriver{NULL, "/dev/ttyS0"};
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_DISCO
 static RCInput_Multi rcinDriver{
     2, NEW_NOTHROW RCInput_RCProtocol("/dev/uart-sbus", "/dev/uart-sumd"),
