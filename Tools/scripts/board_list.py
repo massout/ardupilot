@@ -38,15 +38,15 @@ class BoardList(object):
 
     def set_hwdef_dir(self):
         self.hwdef_dir = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            "..", "..", "libraries", "AP_HAL_ChibiOS", "hwdef")
+            os.path.dirname(os.path.realpath(__file__)), "..", "..", "libraries", "AP_HAL_ChibiOS", "hwdef"
+        )
 
         if os.path.exists(self.hwdef_dir):
             return
 
         self.hwdef_dir = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            "libraries", "AP_HAL_ChibiOS", "hwdef")
+            os.path.dirname(os.path.realpath(__file__)), "libraries", "AP_HAL_ChibiOS", "hwdef"
+        )
 
         if os.path.exists(self.hwdef_dir):
             # we're on the autotest server and have been copied in
@@ -73,6 +73,7 @@ class BoardList(object):
             Board("canzero"),
             Board("SITL_x86_64_linux_gnu"),
             Board("SITL_arm_linux_gnueabihf"),
+            Board("sharky"),
         ]
 
         for adir in os.listdir(self.hwdef_dir):
@@ -103,9 +104,7 @@ class BoardList(object):
                     if mname.lower() == 'none':
                         board.autobuild_targets = []
                     else:
-                        board.autobuild_targets = [
-                            x.rstrip().lstrip().lower() for x in mname.split(",")
-                        ]
+                        board.autobuild_targets = [x.rstrip().lstrip().lower() for x in mname.split(",")]
 
     def read_hwdef(self, filepath):
         fh = open(filepath)
@@ -134,16 +133,12 @@ class BoardList(object):
             # IOMCU:
             "iomcu",
             'iomcu_f103_8MHz',
-
             # bdshot
             "fmuv3-bdshot",
-
             # renamed to KakuteH7Mini-Nand
             "KakuteH7Miniv2",
-
             # renamed to AtomRCF405NAVI
             "AtomRCF405"
-
             # other
             "crazyflie2",
             "CubeOrange-joey",
@@ -156,7 +151,7 @@ class BoardList(object):
             "*-ODID-heli",
         ]
 
-        ret = filter(lambda x : not in_blacklist(blacklist, x), ret)
+        ret = filter(lambda x: not in_blacklist(blacklist, x), ret)
 
         # if the caller has supplied a vehicle to limit to then we do that here:
         if build_target is not None:
@@ -196,6 +191,7 @@ AP_PERIPH_BOARDS = BoardList().find_ap_periph_boards()
 
 if __name__ == '__main__':
     import argparse
+
     parser = argparse.ArgumentParser(description='list boards to build')
 
     parser.add_argument('target')

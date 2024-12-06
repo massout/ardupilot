@@ -16,35 +16,34 @@
   this is a driver for multiple RCInput methods on one board
  */
 
+#include "RCInput_RCProtocol.h"
+
 #include <AP_HAL/AP_HAL.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/ioctl.h>
+#include <AP_RCProtocol/AP_RCProtocol.h>
+#include <GCS_MAVLink/GCS.h>
 #include <asm/ioctls.h>
 #include <asm/termbits.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
-#include <AP_RCProtocol/AP_RCProtocol.h>
-#include "RCInput.h"
-#include "RCInput_RCProtocol.h"
-#include <GCS_MAVLink/GCS.h>
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_DISCO ||     \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BLUE ||      \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_VNAV ||      \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR || \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
 
-#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_DISCO || \
-    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BLUE || \
-    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_VNAV || \
-    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR
-
-extern const AP_HAL::HAL& hal;
+extern const AP_HAL::HAL &hal;
 
 using namespace Linux;
 
 /*
   open a SBUS UART
  */
-int RCInput_RCProtocol::open_sbus(const char *path)
-{
+int RCInput_RCProtocol::open_sbus(const char *path) {
     int fd = open(path, O_RDWR | O_NONBLOCK | O_CLOEXEC);
     if (fd == -1) {
         return -1;
@@ -56,8 +55,8 @@ int RCInput_RCProtocol::open_sbus(const char *path)
         fd = -1;
         return -1;
     }
-    tio.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR
-                     | IGNCR | ICRNL | IXON);
+    tio.c_iflag &=
+        ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
     tio.c_iflag |= (INPCK | IGNPAR);
     tio.c_oflag &= ~OPOST;
     tio.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
@@ -78,8 +77,7 @@ int RCInput_RCProtocol::open_sbus(const char *path)
 /*
   open a 115200 UART
  */
-int RCInput_RCProtocol::open_115200(const char *path)
-{
+int RCInput_RCProtocol::open_115200(const char *path) {
     int fd = open(path, O_RDWR | O_NONBLOCK | O_CLOEXEC);
     if (fd == -1) {
         return -1;
@@ -92,12 +90,12 @@ int RCInput_RCProtocol::open_115200(const char *path)
         return -1;
     }
 
-    tio.c_cflag &= ~(PARENB|CSTOPB|CSIZE|CBAUD);
+    tio.c_cflag &= ~(PARENB | CSTOPB | CSIZE | CBAUD);
     tio.c_cflag |= CS8 | CREAD | CLOCAL | B115200;
 
-    tio.c_lflag &= ~(ICANON|ECHO|ECHOE|ISIG);
-    tio.c_iflag &= ~(IXON|IXOFF|IXANY);
-    tio.c_iflag &= ~(INLCR|ICRNL|IGNCR|IUCLC|BRKINT);
+    tio.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+    tio.c_iflag &= ~(IXON | IXOFF | IXANY);
+    tio.c_iflag &= ~(INLCR | ICRNL | IGNCR | IUCLC | BRKINT);
     tio.c_oflag &= ~OPOST;
 
     if (ioctl(fd, TCSETS2, &tio) != 0) {
@@ -110,14 +108,11 @@ int RCInput_RCProtocol::open_115200(const char *path)
 }
 
 // constructor
-RCInput_RCProtocol::RCInput_RCProtocol(const char *_dev_inverted, const char *_dev_115200) :
-    dev_inverted(_dev_inverted),
-    dev_115200(_dev_115200)
-{
-}
+RCInput_RCProtocol::RCInput_RCProtocol(const char *_dev_inverted,
+                                       const char *_dev_115200)
+    : dev_inverted(_dev_inverted), dev_115200(_dev_115200) {}
 
-void RCInput_RCProtocol::init()
-{
+void RCInput_RCProtocol::init() {
     if (dev_inverted) {
         fd_inverted = open_sbus(dev_inverted);
     } else {
@@ -133,22 +128,22 @@ void RCInput_RCProtocol::init()
     printf("SBUS FD %d  115200 FD %d\n", fd_inverted, fd_115200);
 }
 
-void RCInput_RCProtocol::_timer_tick(void)
-{
+void RCInput_RCProtocol::_timer_tick(void) {
     uint8_t b[80];
 
     if (fd_inverted != -1) {
         ssize_t n = ::read(fd_inverted, &b[0], sizeof(b));
         if (n > 0) {
-            for (uint8_t i=0; i<n; i++) {
-                AP::RC().process_byte(b[i], inverted_is_115200?115200:100000);
+            for (uint8_t i = 0; i < n; i++) {
+                AP::RC().process_byte(b[i],
+                                      inverted_is_115200 ? 115200 : 100000);
             }
         }
     }
     if (fd_115200 != -1) {
         ssize_t n = ::read(fd_115200, &b[0], sizeof(b));
         if (n > 0 && !inverted_is_115200) {
-            for (uint8_t i=0; i<n; i++) {
+            for (uint8_t i = 0; i < n; i++) {
                 AP::RC().process_byte(b[i], 115200);
             }
         }
@@ -157,7 +152,7 @@ void RCInput_RCProtocol::_timer_tick(void)
     if (AP::RC().new_input()) {
         last_frame_ms = AP_HAL::millis();
         uint8_t n = AP::RC().num_channels();
-        for (uint8_t i=0; i<n; i++) {
+        for (uint8_t i = 0; i < n; i++) {
             _pwm_values[i] = AP::RC().read(i);
         }
         _num_channels = n;
@@ -178,4 +173,4 @@ void RCInput_RCProtocol::_timer_tick(void)
     }
 }
 
-#endif // HAL
+#endif  // HAL

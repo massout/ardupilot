@@ -20,20 +20,23 @@
 
 #include <AP_HAL/AP_HAL_Boards.h>
 
-#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_DISCO || \
-    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BLUE || \
-    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_VNAV || \
-    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR
+#include "RCInput.h"
+
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_DISCO ||     \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BLUE ||      \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_VNAV ||      \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR || \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
 
 namespace Linux {
 
 class RCInput_RCProtocol : public RCInput {
-public:
+   public:
     RCInput_RCProtocol(const char *dev_sbus, const char *dev_115200);
     void init() override;
     void _timer_tick(void) override;
 
-private:
+   private:
     int open_sbus(const char *path);
     int open_115200(const char *path);
 
@@ -45,6 +48,6 @@ private:
     uint32_t last_frame_ms;
     bool inverted_is_115200;
 };
-};
+};  // namespace Linux
 
 #endif
