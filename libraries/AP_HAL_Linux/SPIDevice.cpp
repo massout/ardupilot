@@ -16,6 +16,8 @@
  */
 #include "SPIDevice.h"
 
+#include <AP_HAL/AP_HAL.h>
+#include <AP_HAL/utility/OwnPtr.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -25,12 +27,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <vector>
 
-#include <AP_HAL/AP_HAL.h>
-#include <AP_HAL/utility/OwnPtr.h>
-
 #include "GPIO.h"
+#include "GPIO_RPI.h"
 #include "PollerThread.h"
 #include "Scheduler.h"
 #include "Semaphores.h"
@@ -39,23 +40,26 @@
 
 #define DEBUG 0
 
-extern const AP_HAL::HAL& hal;
+extern const AP_HAL::HAL &hal;
 
 namespace Linux {
 
-#define MHZ (1000U*1000U)
-#define KHZ (1000U)
+#define MHZ           (1000U * 1000U)
+#define KHZ           (1000U)
 #define SPI_CS_KERNEL -1
 
 struct SPIDesc {
     SPIDesc(const char *name_, uint16_t bus_, uint16_t subdev_, uint8_t mode_,
             uint8_t bits_per_word_, int16_t cs_pin_, uint32_t lowspeed_,
             uint32_t highspeed_)
-        : name(name_), bus(bus_), subdev(subdev_), mode(mode_)
-        , bits_per_word(bits_per_word_), cs_pin(cs_pin_), lowspeed(lowspeed_)
-        , highspeed(highspeed_)
-    {
-    }
+        : name(name_),
+          bus(bus_),
+          subdev(subdev_),
+          mode(mode_),
+          bits_per_word(bits_per_word_),
+          cs_pin(cs_pin_),
+          lowspeed(lowspeed_),
+          highspeed(highspeed_) {}
 
     const char *name;
     uint16_t bus;
@@ -67,98 +71,107 @@ struct SPIDesc {
     uint32_t highspeed;
 };
 
-
-#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXF || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_ERLEBOARD
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXF || \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_ERLEBOARD
 SPIDesc SPIDeviceManager::_device[] = {
     // different SPI tables per board subtype
-    SPIDesc("lsm9ds0_am", 1, 0, SPI_MODE_3, 8, BBB_P9_17,  10*MHZ,10*MHZ),
-    SPIDesc("lsm9ds0_g",  1, 0, SPI_MODE_3, 8, BBB_P8_9,   10*MHZ,10*MHZ),
-    SPIDesc("ms5611",     2, 0, SPI_MODE_3, 8, BBB_P9_42,  10*MHZ,10*MHZ),
-    SPIDesc("mpu6000",    2, 0, SPI_MODE_3, 8, BBB_P9_28,  500*1000, 20*MHZ),
-    SPIDesc("mpu9250",    2, 0, SPI_MODE_3, 8, BBB_P9_23,  1*MHZ, 11*MHZ),
+    SPIDesc("lsm9ds0_am", 1, 0, SPI_MODE_3, 8, BBB_P9_17, 10 * MHZ, 10 * MHZ),
+    SPIDesc("lsm9ds0_g", 1, 0, SPI_MODE_3, 8, BBB_P8_9, 10 * MHZ, 10 * MHZ),
+    SPIDesc("ms5611", 2, 0, SPI_MODE_3, 8, BBB_P9_42, 10 * MHZ, 10 * MHZ),
+    SPIDesc("mpu6000", 2, 0, SPI_MODE_3, 8, BBB_P9_28, 500 * 1000, 20 * MHZ),
+    SPIDesc("mpu9250", 2, 0, SPI_MODE_3, 8, BBB_P9_23, 1 * MHZ, 11 * MHZ),
+};
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
+SPIDesc SPIDeviceManager::_device[] = {
+    SPIDesc("mpu9250", 0, 0, SPI_MODE_0, 8, RPI_GPIO_<8>(), 1 * MHZ, 11 * MHZ),
+    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, RPI_GPIO_<7>(), 1 * MHZ, 11 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("led",        0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL,  6*MHZ, 6*MHZ),
-    SPIDesc("icm20602",   1, 2, SPI_MODE_0, 8, SPI_CS_KERNEL,  4*MHZ, 10*MHZ),
-    SPIDesc("mmc5983",    1, 1, SPI_MODE_0, 8, SPI_CS_KERNEL,  4*MHZ, 10*MHZ),
+    SPIDesc("led", 0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 6 * MHZ, 6 * MHZ),
+    SPIDesc("icm20602", 1, 2, SPI_MODE_0, 8, SPI_CS_KERNEL, 4 * MHZ, 10 * MHZ),
+    SPIDesc("mmc5983", 1, 1, SPI_MODE_0, 8, SPI_CS_KERNEL, 4 * MHZ, 10 * MHZ),
 };
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO2
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO || \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO2
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("mpu9250",    0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL,  1*MHZ, 11*MHZ),
-    SPIDesc("ublox",      0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL,  5*MHZ, 5*MHZ),
+    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL, 1 * MHZ, 11 * MHZ),
+    SPIDesc("ublox", 0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 5 * MHZ, 5 * MHZ),
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO2
-    SPIDesc("lsm9ds1_m",  0, 2, SPI_MODE_0, 8, SPI_CS_KERNEL,  1*MHZ, 10*MHZ),
+    SPIDesc("lsm9ds1_m", 0, 2, SPI_MODE_0, 8, SPI_CS_KERNEL, 1 * MHZ, 10 * MHZ),
 #endif
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_ERLEBRAIN2 || \
-      CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXFMINI
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXFMINI
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("mpu9250",    0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL,  1*MHZ, 11*MHZ),
-    SPIDesc("ms5611",     0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL,  1*KHZ, 10*MHZ),
+    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL, 1 * MHZ, 11 * MHZ),
+    SPIDesc("ms5611", 0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 1 * KHZ, 10 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_CANZERO
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("mpu9250",    0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL,  1*MHZ, 11*MHZ),
-    SPIDesc("ms5611",     0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL,  10*MHZ, 10*MHZ),
+    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL, 1 * MHZ, 11 * MHZ),
+    SPIDesc("ms5611", 0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 10 * MHZ, 10 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBBMINI
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("mpu9250",    2, 0, SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 11*MHZ),
-    SPIDesc("mpu9250ext", 1, 0, SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 11*MHZ),
-    SPIDesc("ms5611",     2, 1, SPI_MODE_3, 8, SPI_CS_KERNEL,  10*MHZ,10*MHZ),
+    SPIDesc("mpu9250", 2, 0, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ, 11 * MHZ),
+    SPIDesc("mpu9250ext", 1, 0, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ,
+            11 * MHZ),
+    SPIDesc("ms5611", 2, 1, SPI_MODE_3, 8, SPI_CS_KERNEL, 10 * MHZ, 10 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_POCKET
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("mpu9250",    2, 1, SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 11*MHZ),
-    SPIDesc("bmp280",     2, 0, SPI_MODE_0, 8, SPI_CS_KERNEL,  10*MHZ,10*MHZ),
+    SPIDesc("mpu9250", 2, 1, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ, 11 * MHZ),
+    SPIDesc("bmp280", 2, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 10 * MHZ, 10 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_OCPOC_ZYNQ
 SPIDesc SPIDeviceManager::_device[] = {
     /* MPU9250 is restricted to 1MHz for non-data and interrupt registers */
-    SPIDesc("mpu9250",    1, 0,  SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 10*MHZ),
-    SPIDesc("ms5611",     1, 1,  SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 10*MHZ),
+    SPIDesc("mpu9250", 1, 0, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ, 10 * MHZ),
+    SPIDesc("ms5611", 1, 1, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ, 10 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BH
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL, 1*MHZ, 11*MHZ),
-    SPIDesc("ublox",   0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 5*MHZ, 5*MHZ),
+    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL, 1 * MHZ, 11 * MHZ),
+    SPIDesc("ublox", 0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 5 * MHZ, 5 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_DARK
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL,  1*MHZ, 11*MHZ),
+    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL, 1 * MHZ, 11 * MHZ),
 };
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_DISCO
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP || \
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_DISCO
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("bebop", 1, 0, SPI_MODE_0, 8, SPI_CS_KERNEL,  320*KHZ, 320*KHZ),
+    SPIDesc("bebop", 1, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 320 * KHZ, 320 * KHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_AERO
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("aeroio", 1, 1, SPI_MODE_0, 8, SPI_CS_KERNEL,  10*MHZ, 10*MHZ),
-    SPIDesc("bmi160", 3, 0, SPI_MODE_3, 8, SPI_CS_KERNEL, 1*MHZ, 10*MHZ),
+    SPIDesc("aeroio", 1, 1, SPI_MODE_0, 8, SPI_CS_KERNEL, 10 * MHZ, 10 * MHZ),
+    SPIDesc("bmi160", 3, 0, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ, 10 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_EDGE
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("mpu60x0",    0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL,  1*MHZ, 11*MHZ),
-    SPIDesc("mpu60x0ext",    0, 2, SPI_MODE_0, 8, SPI_CS_KERNEL,  1*MHZ, 11*MHZ),
-    SPIDesc("ms5611",     0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL,  10*MHZ,10*MHZ),
+    SPIDesc("mpu60x0", 0, 1, SPI_MODE_0, 8, SPI_CS_KERNEL, 1 * MHZ, 11 * MHZ),
+    SPIDesc("mpu60x0ext", 0, 2, SPI_MODE_0, 8, SPI_CS_KERNEL, 1 * MHZ,
+            11 * MHZ),
+    SPIDesc("ms5611", 0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 10 * MHZ, 10 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_RST_ZYNQ
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("rst_g",    0, 0,  SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 10*MHZ),
-    SPIDesc("lis3mdl",  0, 1,  SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 10*MHZ),
-    SPIDesc("rst_a",    0, 2,  SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 10*MHZ),
-    SPIDesc("ms5611",   0, 3,  SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 10*MHZ),
+    SPIDesc("rst_g", 0, 0, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ, 10 * MHZ),
+    SPIDesc("lis3mdl", 0, 1, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ, 10 * MHZ),
+    SPIDesc("rst_a", 0, 2, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ, 10 * MHZ),
+    SPIDesc("ms5611", 0, 3, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ, 10 * MHZ),
 };
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_OBAL_V1 && \
-    defined (HAL_BOARD_SUBTYPE_LINUX_OBAL_V1_MPU_9250_SPI)
+    defined(HAL_BOARD_SUBTYPE_LINUX_OBAL_V1_MPU_9250_SPI)
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("mpu9250",    0, 0, SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 10*MHZ),
+    SPIDesc("mpu9250", 0, 0, SPI_MODE_3, 8, SPI_CS_KERNEL, 1 * MHZ, 10 * MHZ),
 };
 #else
 // empty device table
 SPIDesc SPIDeviceManager::_device[] = {
-    SPIDesc("**dummy**",    0, 0, SPI_MODE_3, 0, 0,  0 * MHZ, 0 * MHZ),
+    SPIDesc("**dummy**", 0, 0, SPI_MODE_3, 0, 0, 0 * MHZ, 0 * MHZ),
 };
 #define LINUX_SPI_DEVICE_NUM_DEVICES 1
 #endif
@@ -171,10 +184,9 @@ SPIDesc SPIDeviceManager::_device[] = {
 
 const uint8_t SPIDeviceManager::_n_device_desc = LINUX_SPI_DEVICE_NUM_DEVICES;
 
-
 /* Private struct to maintain for each bus */
 class SPIBus : public TimerPollable::WrapperCb {
-public:
+   public:
     SPIBus(uint16_t bus_);
     ~SPIBus();
 
@@ -195,32 +207,19 @@ public:
     uint8_t ref;
 };
 
-SPIBus::SPIBus(uint16_t bus_)
-    : bus(bus_)
-{
-    memset(fd, -1, sizeof(fd));
-}
+SPIBus::SPIBus(uint16_t bus_) : bus(bus_) { memset(fd, -1, sizeof(fd)); }
 
-SPIBus::~SPIBus()
-{
+SPIBus::~SPIBus() {
     for (unsigned i = 0; i < MAX_SUBDEVS; i++) {
         ::close(fd[i]);
     }
 }
 
-void SPIBus::start_cb()
-{
-    sem.take_blocking();
-}
+void SPIBus::start_cb() { sem.take_blocking(); }
 
-void SPIBus::end_cb()
-{
-    sem.give();
-}
+void SPIBus::end_cb() { sem.give(); }
 
-
-void SPIBus::open(uint16_t subdev)
-{
+void SPIBus::open(uint16_t subdev) {
     /* Already open by another device */
     if (fd[subdev] >= 0) {
         return;
@@ -230,16 +229,13 @@ void SPIBus::open(uint16_t subdev)
     snprintf(path, sizeof(path), "/dev/spidev%u.%u", bus, subdev);
     fd[subdev] = ::open(path, O_RDWR | O_CLOEXEC);
     if (fd[subdev] < 0) {
-        AP_HAL::panic("SPI: unable to open SPI bus %s: %s",
-                      path, strerror(errno));
+        AP_HAL::panic("SPI: unable to open SPI bus %s: %s", path,
+                      strerror(errno));
     }
 }
 
-
 SPIDevice::SPIDevice(SPIBus &bus, SPIDesc &device_desc)
-    : _bus(bus)
-    , _desc(device_desc)
-{
+    : _bus(bus), _desc(device_desc) {
     set_device_bus(_bus.bus);
     set_device_address(_desc.subdev);
     _speed = _desc.highspeed;
@@ -257,35 +253,32 @@ SPIDevice::SPIDevice(SPIBus &bus, SPIDesc &device_desc)
     }
 }
 
-SPIDevice::~SPIDevice()
-{
+SPIDevice::~SPIDevice() {
     // Unregister itself from the SPIDeviceManager
     SPIDeviceManager::from(hal.spi)->_unregister(_bus);
 }
 
-bool SPIDevice::set_speed(AP_HAL::Device::Speed speed)
-{
+bool SPIDevice::set_speed(AP_HAL::Device::Speed speed) {
     switch (speed) {
-    case AP_HAL::Device::SPEED_HIGH:
-        _speed = _desc.highspeed;
-        break;
-    case AP_HAL::Device::SPEED_LOW:
-        _speed = _desc.lowspeed;
-        break;
+        case AP_HAL::Device::SPEED_HIGH:
+            _speed = _desc.highspeed;
+            break;
+        case AP_HAL::Device::SPEED_LOW:
+            _speed = _desc.lowspeed;
+            break;
     }
 
     return true;
 }
 
-bool SPIDevice::transfer(const uint8_t *send, uint32_t send_len,
-                         uint8_t *recv, uint32_t recv_len)
-{
-    struct spi_ioc_transfer msgs[2] = { };
+bool SPIDevice::transfer(const uint8_t *send, uint32_t send_len, uint8_t *recv,
+                         uint32_t recv_len) {
+    struct spi_ioc_transfer msgs[2] = {};
     unsigned nmsgs = 0;
     int fd = _bus.fd[_desc.subdev];
 
     if (send && send_len != 0) {
-        msgs[nmsgs].tx_buf = (uint64_t) send;
+        msgs[nmsgs].tx_buf = (uint64_t)send;
         msgs[nmsgs].rx_buf = 0;
         msgs[nmsgs].len = send_len;
         msgs[nmsgs].speed_hz = _speed;
@@ -297,7 +290,7 @@ bool SPIDevice::transfer(const uint8_t *send, uint32_t send_len,
 
     if (recv && recv_len != 0) {
         msgs[nmsgs].tx_buf = 0;
-        msgs[nmsgs].rx_buf = (uint64_t) recv;
+        msgs[nmsgs].rx_buf = (uint64_t)recv;
         msgs[nmsgs].len = recv_len;
         msgs[nmsgs].speed_hz = _speed;
         msgs[nmsgs].delay_usecs = 0;
@@ -326,8 +319,9 @@ bool SPIDevice::transfer(const uint8_t *send, uint32_t send_len,
                                 fd, strerror(errno));
             _bus.last_mode = -1;
         } else if (current_mode != _bus.last_mode) {
-            hal.console->printf("SPIDevice: bus mode conflict fd=%d mode=%u/%u\n",
-                                fd, (unsigned)_bus.last_mode, (unsigned)current_mode);
+            hal.console->printf(
+                "SPIDevice: bus mode conflict fd=%d mode=%u/%u\n", fd,
+                (unsigned)_bus.last_mode, (unsigned)current_mode);
             _bus.last_mode = -1;
         }
     }
@@ -358,17 +352,16 @@ bool SPIDevice::transfer(const uint8_t *send, uint32_t send_len,
 }
 
 bool SPIDevice::transfer_fullduplex(const uint8_t *send, uint8_t *recv,
-                                    uint32_t len)
-{
-    struct spi_ioc_transfer msgs[1] = { };
+                                    uint32_t len) {
+    struct spi_ioc_transfer msgs[1] = {};
     int fd = _bus.fd[_desc.subdev];
 
     if (!send || !recv || len == 0) {
         return false;
     }
 
-    msgs[0].tx_buf = (uint64_t) send;
-    msgs[0].rx_buf = (uint64_t) recv;
+    msgs[0].tx_buf = (uint64_t)send;
+    msgs[0].rx_buf = (uint64_t)recv;
     msgs[0].len = len;
     msgs[0].speed_hz = _speed;
     msgs[0].delay_usecs = 0;
@@ -377,8 +370,8 @@ bool SPIDevice::transfer_fullduplex(const uint8_t *send, uint8_t *recv,
 
     int r = ioctl(fd, SPI_IOC_WR_MODE, &_desc.mode);
     if (r < 0) {
-        hal.console->printf("SPIDevice: error on setting mode fd=%d (%s)\n",
-                            fd, strerror(errno));
+        hal.console->printf("SPIDevice: error on setting mode fd=%d (%s)\n", fd,
+                            strerror(errno));
         return false;
     }
 
@@ -395,9 +388,7 @@ bool SPIDevice::transfer_fullduplex(const uint8_t *send, uint8_t *recv,
     return true;
 }
 
-
-void SPIDevice::_cs_assert()
-{
+void SPIDevice::_cs_assert() {
     if (_desc.cs_pin == SPI_CS_KERNEL) {
         return;
     }
@@ -405,8 +396,7 @@ void SPIDevice::_cs_assert()
     _cs->write(0);
 }
 
-void SPIDevice::_cs_release()
-{
+void SPIDevice::_cs_release() {
     if (_desc.cs_pin == SPI_CS_KERNEL) {
         return;
     }
@@ -414,14 +404,10 @@ void SPIDevice::_cs_release()
     _cs->write(1);
 }
 
-AP_HAL::Semaphore *SPIDevice::get_semaphore()
-{
-    return &_bus.sem;
-}
+AP_HAL::Semaphore *SPIDevice::get_semaphore() { return &_bus.sem; }
 
 AP_HAL::Device::PeriodicHandle SPIDevice::register_periodic_callback(
-    uint32_t period_usec, AP_HAL::Device::PeriodicCb cb)
-{
+    uint32_t period_usec, AP_HAL::Device::PeriodicCb cb) {
     TimerPollable *p = _bus.thread.add_timer(cb, &_bus, period_usec);
     if (!p) {
         AP_HAL::panic("Could not create periodic callback");
@@ -439,16 +425,14 @@ AP_HAL::Device::PeriodicHandle SPIDevice::register_periodic_callback(
     return static_cast<AP_HAL::Device::PeriodicHandle>(p);
 }
 
-bool SPIDevice::adjust_periodic_callback(
-    AP_HAL::Device::PeriodicHandle h, uint32_t period_usec)
-{
-    return _bus.thread.adjust_timer(static_cast<TimerPollable*>(h), period_usec);
+bool SPIDevice::adjust_periodic_callback(AP_HAL::Device::PeriodicHandle h,
+                                         uint32_t period_usec) {
+    return _bus.thread.adjust_timer(static_cast<TimerPollable *>(h),
+                                    period_usec);
 }
 
-
-AP_HAL::OwnPtr<AP_HAL::SPIDevice>
-SPIDeviceManager::get_device(const char *name)
-{
+AP_HAL::OwnPtr<AP_HAL::SPIDevice> SPIDeviceManager::get_device(
+    const char *name) {
     SPIDesc *desc = nullptr;
 
     /* Find the bus description in the table */
@@ -486,20 +470,15 @@ SPIDeviceManager::get_device(const char *name)
     return dev;
 }
 
-uint8_t SPIDeviceManager::get_count()
-{
-   return _n_device_desc;
-}
+uint8_t SPIDeviceManager::get_count() { return _n_device_desc; }
 
-const char* SPIDeviceManager::get_device_name(uint8_t idx)
-{
+const char *SPIDeviceManager::get_device_name(uint8_t idx) {
     return _device[idx].name;
 }
 
 /* Create a new device increasing the bus reference */
-AP_HAL::OwnPtr<AP_HAL::SPIDevice>
-SPIDeviceManager::_create_device(SPIBus &b, SPIDesc &desc) const
-{
+AP_HAL::OwnPtr<AP_HAL::SPIDevice> SPIDeviceManager::_create_device(
+    SPIBus &b, SPIDesc &desc) const {
     // Ensure bus is open
     b.open(desc.subdev);
 
@@ -513,8 +492,7 @@ SPIDeviceManager::_create_device(SPIBus &b, SPIDesc &desc) const
     return dev;
 }
 
-void SPIDeviceManager::_unregister(SPIBus &b)
-{
+void SPIDeviceManager::_unregister(SPIBus &b) {
     if (b.ref == 0 || --b.ref > 0) {
         return;
     }
@@ -528,8 +506,7 @@ void SPIDeviceManager::_unregister(SPIBus &b)
     }
 }
 
-void SPIDeviceManager::teardown()
-{
+void SPIDeviceManager::teardown() {
     for (auto it = _buses.begin(); it != _buses.end(); it++) {
         /* Try to stop thread - it may not even be started yet */
         (*it)->thread.stop();
@@ -541,4 +518,4 @@ void SPIDeviceManager::teardown()
     }
 }
 
-}
+}  // namespace Linux
