@@ -81,6 +81,11 @@ SPIDesc SPIDeviceManager::_device[] = {
     SPIDesc("mpu6000", 2, 0, SPI_MODE_3, 8, BBB_P9_28, 500 * 1000, 20 * MHZ),
     SPIDesc("mpu9250", 2, 0, SPI_MODE_3, 8, BBB_P9_23, 1 * MHZ, 11 * MHZ),
 };
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_SHARKY
+SPIDesc SPIDeviceManager::_device[] = {
+    SPIDesc("mpu9250", 0, 0, SPI_MODE_0, 8, RPI_GPIO_<8>(), 1 * MHZ, 11 * MHZ),
+    SPIDesc("mpu9250", 0, 1, SPI_MODE_0, 8, RPI_GPIO_<7>(), 1 * MHZ, 11 * MHZ),
+};
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR
 SPIDesc SPIDeviceManager::_device[] = {
     SPIDesc("led", 0, 0, SPI_MODE_0, 8, SPI_CS_KERNEL, 6 * MHZ, 6 * MHZ),
